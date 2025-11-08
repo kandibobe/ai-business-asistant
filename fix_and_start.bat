@@ -26,8 +26,20 @@ if not exist ".env" (
     exit /b 1
 )
 
-echo [2/7] Установка/обновление зависимостей...
-pip install -q -r requirements.txt
+echo [2/7] Проверка зависимостей...
+python check_dependencies.py
+if errorlevel 1 (
+    echo.
+    echo [ВНИМАНИЕ] Некоторые зависимости отсутствуют.
+    echo Устанавливаем все зависимости из requirements.txt...
+    pip install -r requirements.txt
+    if errorlevel 1 (
+        echo [ERROR] Ошибка при установке зависимостей!
+        pause
+        exit /b 1
+    )
+    echo [OK] Зависимости установлены!
+)
 
 echo [3/7] Остановка всех старых процессов Celery...
 taskkill /F /IM celery.exe /T >nul 2>&1
