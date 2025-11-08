@@ -19,7 +19,9 @@ class User(Base):
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=now())
-    
+    language = Column(String, default='ru', nullable=True)  # Язык пользователя
+    mode = Column(String, default='standard', nullable=True)  # Режим работы
+
     # Связь "один ко многим": один пользователь может иметь много документов
     documents = relationship("Document", back_populates="owner", cascade="all, delete-orphan")
 
