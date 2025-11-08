@@ -11,7 +11,7 @@ load_dotenv()
 app = Celery(
     'worker',
     broker=os.getenv('REDIS_URL'),
-    include=['handlers.tasks'] # Указываем, где искать задачи
+    include=['tasks'] # Указываем, где искать задачи (tasks.py в корне)
 )
 
 # Эта настройка позволяет Celery автоматически находить задачи

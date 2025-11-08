@@ -110,8 +110,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("« К списку документов", callback_data='my_docs')]])
             )
-        # ... (остальные обработчики кнопок 'help', 'confirm_clear' и т.д. остаются такими же, как в прошлой версии)
+        elif callback_data == 'help':
+            await query.edit_message_text(
+                text="📖 **Инструкция по использованию:**\n\n"
+                     "1. Отправьте мне PDF документ для анализа\n"
+                     "2. Я автоматически извлеку текст и сделаю документ активным\n"
+                     "3. Задавайте вопросы по активному документу\n"
+                     "4. Используйте /mydocs для переключения между документами\n\n"
+                     "🎙️ Также поддерживаю аудио и голосовые сообщения!",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("« Назад в меню", callback_data='start')]])
+            )
+        elif callback_data == 'confirm_clear':
+            keyboard = [
+                [InlineKeyboardButton("✅ Да, удалить все", callback_data='clear_confirmed')],
+                [InlineKeyboardButton("❌ Отмена", callback_data='start')]
+            ]
+            await query.edit_message_text(
+                text="⚠️ **Внимание!**\n\nВы уверены, что хотите удалить все свои документы? Это действие необратимо.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        elif callback_data == 'clear_confirmed':
+            num_deleted = crud.delete_user_documents(db, db_user)
+            await query.edit_message_text(
+                text=f"✅ Удалено документов: {num_deleted}\n\nВаши данные очищены.",
+                reply_markup=get_main_menu_keyboard()
+            )
     finally:
         db.close()
 
-# ... (остальные функции, такие как clear_command, остаются без изменений)
+async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Команда для очистки всех документов пользователя."""
+    user = update.effective_user
+    db: Session = SessionLocal()
+    try:
+        db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
+        keyboard = [
+            [InlineKeyboardButton("✅ Да, удалить все", callback_data='clear_confirmed')],
+            [InlineKeyboardButton("❌ Отмена", callback_data='start')]
+        ]
+        await update.message.reply_text(
+            "⚠️ **Внимание!**\n\nВы уверены, что хотите удалить все свои документы? Это действие необратимо.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    finally:
+        db.close()

@@ -1,11 +1,11 @@
-# handlers/audio.py
+# audio.py
 
 import os
 from telegram import Update
 from telegram.ext import ContextTypes
 
-# Импортируем нашу новую задачу для аудио
-from .tasks import transcribe_audio_task
+# Импортируем нашу новую задачу для аудио из tasks.py в корне
+from tasks import transcribe_audio_task
 
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
