@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from database.database import SessionLocal
 from database import crud
+from handlers.common import get_main_menu_keyboard
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gemini_model: genai.GenerativeModel):
     user = update.effective_user
@@ -23,11 +24,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
         if not active_document:
             await update.message.reply_text(
                 "У вас не выбран активный документ. Выберите его из списка /mydocs или загрузите новый.",
-                reply_markup=get_main_menu_keyboard() # Импортируем из common
+                reply_markup=get_main_menu_keyboard()
             )
             return
-            
-        document_text = latest_document.extracted_text
+
+        document_text = active_document.extracted_text
         thinking_message = await update.message.reply_text("🧠 Думаю над вашим вопросом...")
 
         prompt = f"""

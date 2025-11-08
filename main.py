@@ -1,7 +1,6 @@
 # main.py
 import os
 import logging
-from handlers.audio import handle_audio
 import google.generativeai as genai
 from dotenv import load_dotenv
 from functools import partial
@@ -9,9 +8,10 @@ from functools import partial
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 
 from config import GEMINI_MODEL_NAME
-from handlers.common import start, clear_command, button_callback
+from handlers.common import start, clear_command, button_callback, my_docs_command
 from handlers.documents import handle_document
 from handlers.messages import handle_message
+from audio import handle_audio
 from database.database import init_db
 
 logging.basicConfig(
