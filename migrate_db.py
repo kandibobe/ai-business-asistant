@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Скрипт миграции базы данных для добавления полей language и mode в таблицу users.
+Скрипт миграции базы данных для добавления полей language, mode и active_document_id в таблицу users.
 """
 import os
 import sys
@@ -60,6 +60,35 @@ def migrate_add_language_mode():
             print("✅ Столбец 'mode' успешно добавлен.")
         else:
             print("ℹ️  Столбец 'mode' уже существует.")
+
+        # Проверяем наличие столбца active_document_id
+        check_active_doc = text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name='users' AND column_name='active_document_id';
+        """)
+
+        result = db.execute(check_active_doc).fetchone()
+
+        if not result:
+            print("➕ Добавляем столбец 'active_document_id' в таблицу 'users'...")
+            db.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN active_document_id INTEGER;
+            """))
+            db.commit()
+
+            # Добавляем внешний ключ
+            print("➕ Добавляем внешний ключ для 'active_document_id'...")
+            db.execute(text("""
+                ALTER TABLE users
+                ADD CONSTRAINT fk_active_document
+                FOREIGN KEY (active_document_id) REFERENCES documents(id) ON DELETE SET NULL;
+            """))
+            db.commit()
+            print("✅ Столбец 'active_document_id' успешно добавлен.")
+        else:
+            print("ℹ️  Столбец 'active_document_id' уже существует.")
 
         print("\n🎉 Миграция успешно завершена!")
 

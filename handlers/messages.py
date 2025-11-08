@@ -16,6 +16,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
     user = update.effective_user
     question = update.message.text
 
+    # === ПРИОРИТЕТ 1: Developer Tools Input ===
+    # Проверяем, ожидается ли ввод для инструментов разработчика
+    from handlers.developer_handlers import handle_developer_tool_input
+    if await handle_developer_tool_input(update, context):
+        return  # Ввод обработан, выходим
+
+    # === ПРИОРИТЕТ 2: AI Chat Mode (without documents) ===
+    # Проверяем, активен ли режим AI Chat без документов
+    from handlers.developer_handlers import handle_ai_chat_message
+    ai_response = await handle_ai_chat_message(update, context, gemini_model)
+    if ai_response:
+        # Режим AI Chat активен, отправляем ответ
+        await update.message.reply_html(ai_response)
+        return
+
+    # === ПРИОРИТЕТ 3: URL Detection ===
     # Проверяем, содержит ли сообщение URL
     url_pattern = r'https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&/=]*)'
     urls = re.findall(url_pattern, question)
@@ -39,6 +55,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
         )
         return
 
+    # === ПРИОРИТЕТ 4: Document Q&A ===
     db: Session = SessionLocal()
     try:
         db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
@@ -49,8 +66,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
 
         if not active_document:
             await update.message.reply_text(
-                "У вас не выбран активный документ. Выберите его из списка /mydocs или загрузите новый.",
-                reply_markup=get_main_menu_keyboard()
+                "У вас не выбран активный документ. Выберите его из списка /mydocs или загрузите новый.\n\n"
+                "💡 Или используйте <b>🤖 AI Chat</b> для общения без документов!",
+                reply_markup=get_main_menu_keyboard(),
+                parse_mode='HTML'
             )
             return
 

@@ -49,14 +49,25 @@ for /d /r . %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d"
 del /s /q *.pyc >nul 2>&1
 
 echo [5/7] Запуск миграции базы данных...
+echo.
+echo [5a] Миграция таблицы users...
 python migrate_db.py
 if errorlevel 1 (
     echo.
-    echo [ERROR] Ошибка при миграции базы данных!
+    echo [ERROR] Ошибка при миграции таблицы users!
     echo Проверьте:
     echo 1. PostgreSQL запущен
     echo 2. Параметры в .env корректны
     echo 3. База данных существует
+    pause
+    exit /b 1
+)
+echo.
+echo [5b] Миграция таблицы documents...
+python migrate_documents.py
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Ошибка при миграции таблицы documents!
     pause
     exit /b 1
 )

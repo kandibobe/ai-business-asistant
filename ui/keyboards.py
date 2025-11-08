@@ -12,6 +12,10 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("📊 Статистика", callback_data='stats'),
         ],
         [
+            InlineKeyboardButton("💻 Developer Tools", callback_data='developer_tools'),
+            InlineKeyboardButton("🤖 AI Chat", callback_data='ai_chat_mode'),
+        ],
+        [
             InlineKeyboardButton("⚙️ Настройки", callback_data='settings'),
             InlineKeyboardButton("❓ Помощь", callback_data='help'),
         ],
@@ -77,6 +81,19 @@ def get_export_format_keyboard(doc_id: int) -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("⬅️ Назад", callback_data=f'doc_{doc_id}'),
+        ],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def get_stats_actions_keyboard() -> InlineKeyboardMarkup:
+    """Действия со статистикой (экспорт, визуализация)"""
+    keyboard = [
+        [
+            InlineKeyboardButton("📊 Визуализировать", callback_data='visualize_stats'),
+            InlineKeyboardButton("📄 Скачать PDF", callback_data='export_stats_pdf'),
+        ],
+        [
+            InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
         ],
     ]
     return InlineKeyboardMarkup(keyboard)
