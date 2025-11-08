@@ -19,8 +19,14 @@ class User(Base):
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=now())
-    language = Column(String, default='ru', nullable=True)  # Язык пользователя
-    mode = Column(String, default='standard', nullable=True)  # Режим работы
+
+    # Настройки пользователя
+    language = Column(String, default='ru', nullable=True)  # Язык интерфейса
+    mode = Column(String, default='standard', nullable=True)  # Режим работы AI (fast/standard/advanced)
+    ai_role = Column(String, default='assistant', nullable=True)  # Роль AI (analyst/consultant/teacher/etc)
+    response_style = Column(String, default='standard', nullable=True)  # Стиль ответов (brief/standard/detailed/etc)
+    notifications_enabled = Column(String, default='true', nullable=True)  # Уведомления (true/false как строка)
+    auto_analysis_enabled = Column(String, default='false', nullable=True)  # Авто-анализ документов
 
     # Связь "один ко многим": один пользователь может иметь много документов
     documents = relationship("Document", back_populates="owner", cascade="all, delete-orphan")
