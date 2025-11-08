@@ -17,6 +17,7 @@ from ui import (
     get_document_actions_keyboard,
     get_stats_actions_keyboard,
     get_pagination_keyboard,
+    get_main_reply_keyboard,
     format_welcome_message,
     format_stats_message,
     format_document_list,
@@ -25,6 +26,7 @@ from ui import (
     format_premium_promo,
     format_comparison_table,
 )
+from config.i18n import get_text
 from analytics import get_user_stats, get_document_stats
 from handlers.export_handlers import (
     handle_export_menu,
@@ -46,18 +48,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         is_new = existing_user is None
 
         # Создаем или получаем пользователя
-        crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
+        db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
 
-        # Отправляем приветственное сообщение
-        welcome_text = format_welcome_message(
-            user.first_name or user.username or 'там',
-            is_new=is_new
-        )
+        # Получаем язык пользователя
+        lang = db_user.language or 'ru'
+
+        # Отправляем приветственное сообщение с поддержкой i18n
+        if is_new:
+            welcome_text = get_text('welcome_new', lang, name=user.first_name or user.username or 'там')
+        else:
+            welcome_text = get_text('welcome_back', lang, name=user.first_name or user.username or 'там')
 
         if update.message:
+            # Отправляем основное меню (inline keyboard)
             await update.message.reply_html(
                 welcome_text,
                 reply_markup=get_main_menu_keyboard()
+            )
+            # Отправляем постоянную клавиатуру внизу (reply keyboard)
+            quick_access_text = "⬇️ Используйте кнопки внизу для быстрого доступа" if lang == 'ru' else (
+                "⬇️ Use the buttons below for quick access" if lang == 'en' else
+                "⬇️ Verwenden Sie die Schaltflächen unten für schnellen Zugriff"
+            )
+            await update.message.reply_text(
+                quick_access_text,
+                reply_markup=get_main_reply_keyboard(lang)
             )
         elif update.callback_query:
             await update.callback_query.edit_message_text(

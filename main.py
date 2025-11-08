@@ -10,11 +10,13 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 
 from config import GEMINI_MODEL_NAME
-from handlers.common import start, clear_command, button_callback, my_docs_command
+from handlers.common_enhanced import start, clear_command, button_callback, my_docs_command, stats_command
 from handlers.documents import handle_document
 from handlers.messages import handle_message
+from handlers.reply_keyboard_handler import handle_reply_keyboard
 from audio import handle_audio
 from database.database import init_db
+from migrate_language import migrate_language_field
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -49,7 +51,11 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     load_dotenv()
     init_db()
-    
+
+    # Запускаем миграцию языков
+    logger.info("🌍 Запуск миграции языков...")
+    migrate_language_field()
+
     try:
         gemini_api_key = os.getenv('GEMINI_API_KEY')
         if not gemini_api_key:
@@ -75,10 +81,13 @@ def main() -> None:
     # Регистрируем глобальный обработчик ошибок
     application.add_error_handler(error_handler)
 
+    # Команды
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("mydocs", my_docs_command))
+    application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("clear", clear_command))
 
+    # Callback queries (inline кнопки)
     application.add_handler(CallbackQueryHandler(button_callback))
 
     # Обработчик для всех типов документов (PDF, Excel, Word)
@@ -87,8 +96,17 @@ def main() -> None:
     # Обработчик для аудио и голосовых сообщений
     application.add_handler(MessageHandler(filters.AUDIO | filters.VOICE, handle_audio))
 
-    # Обработчик текстовых сообщений (вопросы по документам)
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler_with_model))
+    # Обработчик текстовых сообщений с приоритетами:
+    # 1. Проверяем Reply Keyboard кнопки
+    # 2. Обрабатываем как обычное сообщение
+    async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # Сначала проверяем Reply Keyboard
+        if await handle_reply_keyboard(update, context):
+            return
+        # Если нет, обрабатываем как обычное сообщение (вопрос/AI chat)
+        await message_handler_with_model(update, context)
+
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
 
 
     logger.info("✅ Бот готов к работе и запускается...")
