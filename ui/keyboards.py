@@ -81,6 +81,19 @@ def get_export_format_keyboard(doc_id: int) -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(keyboard)
 
+def get_stats_actions_keyboard() -> InlineKeyboardMarkup:
+    """Действия со статистикой (экспорт, визуализация)"""
+    keyboard = [
+        [
+            InlineKeyboardButton("📊 Визуализировать", callback_data='visualize_stats'),
+            InlineKeyboardButton("📄 Скачать PDF", callback_data='export_stats_pdf'),
+        ],
+        [
+            InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        ],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
 def get_language_keyboard() -> InlineKeyboardMarkup:
     """Выбор языка"""
     keyboard = [

@@ -15,6 +15,7 @@ from ui import (
     get_ai_mode_keyboard,
     get_premium_keyboard,
     get_document_actions_keyboard,
+    get_stats_actions_keyboard,
     get_pagination_keyboard,
     format_welcome_message,
     format_stats_message,
@@ -25,6 +26,13 @@ from ui import (
     format_comparison_table,
 )
 from analytics import get_user_stats, get_document_stats
+from handlers.export_handlers import (
+    handle_export_menu,
+    handle_export_pdf,
+    handle_export_stats_pdf,
+    handle_visualize_stats,
+    handle_visualize_document,
+)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Команда /start - приветствие и главное меню"""
@@ -61,7 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         db.close()
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Команда /stats - показать статистику пользователя"""
+    """Команда /stats - показать статистику пользователя с возможностью экспорта"""
     user = update.effective_user
     db: Session = SessionLocal()
     try:
@@ -70,18 +78,20 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         if not stats:
             message = "📊 Статистика недоступна. Начните использовать бота!"
+            keyboard = get_main_menu_keyboard()
         else:
             message = format_stats_message(stats)
+            keyboard = get_stats_actions_keyboard()
 
         if update.message:
             await update.message.reply_html(
                 message,
-                reply_markup=get_main_menu_keyboard()
+                reply_markup=keyboard
             )
         elif update.callback_query:
             await update.callback_query.edit_message_text(
                 text=message,
-                reply_markup=get_main_menu_keyboard(),
+                reply_markup=keyboard,
                 parse_mode='HTML'
             )
     finally:
@@ -375,6 +385,46 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         page = int(callback_data.split('_')[2])
         context.user_data['docs_page'] = page
         await my_docs_command(update, context)
+
+    # === EXPORT HANDLERS ===
+
+    # Меню экспорта документа
+    elif callback_data.startswith('export_') and not callback_data.startswith('export_pdf_') and not callback_data.startswith('export_stats'):
+        doc_id = int(callback_data.split('_')[1])
+        await handle_export_menu(update, context, doc_id)
+
+    # Экспорт документа в PDF
+    elif callback_data.startswith('export_pdf_'):
+        doc_id = int(callback_data.split('_')[2])
+        await handle_export_pdf(update, context, doc_id)
+
+    # Экспорт статистики в PDF
+    elif callback_data == 'export_stats_pdf':
+        await handle_export_stats_pdf(update, context)
+
+    # Визуализация статистики
+    elif callback_data == 'visualize_stats':
+        await handle_visualize_stats(update, context)
+
+    # Визуализация данных документа
+    elif callback_data.startswith('visualize_'):
+        doc_id = int(callback_data.split('_')[1])
+        await handle_visualize_document(update, context, doc_id)
+
+    # Краткое содержание документа
+    elif callback_data.startswith('summary_'):
+        doc_id = int(callback_data.split('_')[1])
+        await query.answer("📋 Генерация краткого содержания... (в разработке)", show_alert=True)
+
+    # Ключевые слова документа
+    elif callback_data.startswith('keywords_'):
+        doc_id = int(callback_data.split('_')[1])
+        await query.answer("🔍 Извлечение ключевых слов... (в разработке)", show_alert=True)
+
+    # Задать вопрос по документу
+    elif callback_data.startswith('ask_'):
+        doc_id = int(callback_data.split('_')[1])
+        await query.answer("💬 Просто напишите ваш вопрос в чат!", show_alert=True)
 
     # Заглушка для неизвестных callback
     else:
