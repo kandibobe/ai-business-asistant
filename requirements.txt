@@ -1,0 +1,20 @@
+# requirements.txt
+
+# --- Ядро бота ---
+python-telegram-bot==21.1.1
+python-dotenv==1.0.1
+
+# --- AI Модель ---
+google-generativeai==0.5.4
+
+# --- База данных ---
+SQLAlchemy==2.0.29
+psycopg2-binary==2.9.9
+
+# --- Асинхронные задачи ---
+celery==5.4.0
+redis==5.0.4
+
+# --- Обработка данных ---
+PyMuPDF==1.24.1
+pydub==0.25.1  # <--- НОВАЯ: для работы с аудио

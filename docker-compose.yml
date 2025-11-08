@@ -1,0 +1,41 @@
+# docker-compose.yml
+
+version: '3.8' # Указываем версию синтаксиса docker-compose
+
+services:
+  # --- Сервис №1: База данных PostgreSQL ---
+  db:
+    image: postgres:16-alpine  # Используем официальный, легковесный образ PostgreSQL 16
+    container_name: ai_bot_postgres_db
+    restart: always # Всегда перезапускать контейнер, если он упал
+    environment:
+      # Эти переменные окружения используются образом postgres для первоначальной настройки
+      POSTGRES_USER: ${DB_USER}       # Берем имя пользователя из нашего .env файла
+      POSTGRES_PASSWORD: ${DB_PASS}   # Берем пароль из нашего .env файла
+      POSTGRES_DB: ${DB_NAME}         # Берем имя базы из нашего .env файла
+    ports:
+      # Пробрасываем порт 5432 из контейнера на порт 5432 нашего компьютера.
+      # Формат: <порт на твоем ПК>:<порт внутри контейнера>
+      - "5432:5432"
+    volumes:
+      # Эта строка "сохраняет" данные базы данных на твоем компьютере.
+      # Даже если ты удалишь контейнер, данные останутся в папке postgres_data.
+      - ./postgres_data:/var/lib/postgresql/data
+
+  # --- Сервис №2: Брокер сообщений Redis ---
+  redis:
+    image: redis:7-alpine # Используем официальный, легковесный образ Redis 7
+    container_name: ai_bot_redis
+    restart: always
+    ports:
+      # Пробрасываем порт 6379 из контейнера на порт 6379 нашего компьютера.
+      - "6379:6379"
+    volumes:
+      # Сохраняем данные Redis (если они есть)
+      - ./redis_data:/data
+
+volumes:
+  # Объявляем "тома" (volumes), которые мы использовали выше.
+  # Docker будет управлять этими папками.
+  postgres_data:
+  redis_data:
