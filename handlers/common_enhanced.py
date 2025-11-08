@@ -426,6 +426,140 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         doc_id = int(callback_data.split('_')[1])
         await query.answer("💬 Просто напишите ваш вопрос в чат!", show_alert=True)
 
+    # === DEVELOPER TOOLS ===
+
+    # Главное меню Developer Tools
+    elif callback_data == 'developer_tools':
+        from handlers.developer_handlers import handle_developer_tools
+        await handle_developer_tools(update, context)
+
+    # Меню утилит
+    elif callback_data == 'dev_utilities':
+        from handlers.developer_handlers import handle_utilities_menu
+        await handle_utilities_menu(update, context)
+
+    # Меню форматтеров
+    elif callback_data == 'dev_formatters':
+        from handlers.developer_handlers import handle_formatters_menu
+        await handle_formatters_menu(update, context)
+
+    # Меню генераторов
+    elif callback_data == 'dev_generators':
+        from handlers.developer_handlers import handle_generators_menu
+        await handle_generators_menu(update, context)
+
+    # Меню интеграций
+    elif callback_data == 'dev_integrations':
+        from handlers.developer_handlers import handle_integrations_menu
+        await handle_integrations_menu(update, context)
+
+    # AI Chat Mode
+    elif callback_data == 'ai_chat_mode':
+        from handlers.developer_handlers import handle_ai_chat_mode
+        await handle_ai_chat_mode(update, context)
+
+    # JSON Tools
+    elif callback_data == 'tool_json':
+        from handlers.developer_handlers import handle_json_tool
+        await handle_json_tool(update, context)
+    elif callback_data in ['json_validate', 'json_format', 'json_minify']:
+        from handlers.developer_handlers import handle_json_action
+        await handle_json_action(update, context, callback_data)
+
+    # Base64
+    elif callback_data in ['tool_base64', 'tool_base64_encode', 'tool_base64_decode']:
+        from handlers.developer_handlers import handle_base64_tool
+        await handle_base64_tool(update, context)
+
+    # Hash
+    elif callback_data == 'tool_hash':
+        from handlers.developer_handlers import handle_hash_menu
+        await handle_hash_menu(update, context)
+    elif callback_data in ['hash_md5', 'hash_sha1', 'hash_sha256', 'hash_sha512']:
+        from handlers.developer_handlers import handle_hash_algorithm
+        await handle_hash_algorithm(update, context)
+
+    # UUID
+    elif callback_data == 'tool_uuid' or callback_data == 'gen_uuid':
+        from handlers.developer_handlers import handle_uuid_tool
+        await handle_uuid_tool(update, context)
+
+    # Regex
+    elif callback_data == 'tool_regex':
+        from handlers.developer_handlers import handle_regex_tool
+        await handle_regex_tool(update, context)
+
+    # Cron
+    elif callback_data == 'tool_cron':
+        from handlers.developer_handlers import handle_cron_tool
+        await handle_cron_tool(update, context)
+
+    # Calculator
+    elif callback_data == 'tool_calc':
+        from handlers.developer_handlers import handle_calc_tool
+        await handle_calc_tool(update, context)
+
+    # Color Converter
+    elif callback_data == 'tool_color':
+        from handlers.developer_handlers import handle_color_tool
+        await handle_color_tool(update, context)
+
+    # Formatters
+    elif callback_data == 'format_json':
+        from handlers.developer_handlers import handle_json_action
+        await handle_json_action(update, context, 'json_format')
+    elif callback_data == 'format_json_min':
+        from handlers.developer_handlers import handle_json_action
+        await handle_json_action(update, context, 'json_minify')
+    elif callback_data in ['format_sql', 'format_url_encode', 'format_url_decode', 'format_timestamp']:
+        context.user_data['awaiting_input'] = callback_data
+        await query.answer("📤 Отправьте данные в чат", show_alert=True)
+
+    # Generators
+    elif callback_data == 'gen_password':
+        from handlers.developer_handlers import handle_password_gen
+        await handle_password_gen(update, context)
+    elif callback_data in ['gen_hash_md5', 'gen_hash_sha256']:
+        algorithm = callback_data.replace('gen_hash_', '')
+        context.user_data['awaiting_input'] = f'hash_{algorithm}'
+        await query.answer(f"📤 Отправьте текст для {algorithm.upper()}", show_alert=True)
+    elif callback_data == 'gen_qr':
+        from handlers.developer_handlers import handle_qr_gen
+        await handle_qr_gen(update, context)
+    elif callback_data == 'gen_short_url':
+        from handlers.developer_handlers import handle_short_url
+        await handle_short_url(update, context)
+
+    # API Integrations
+    elif callback_data == 'api_github':
+        from handlers.developer_handlers import handle_github_search
+        await handle_github_search(update, context)
+    elif callback_data == 'api_npm':
+        from handlers.developer_handlers import handle_npm_search
+        await handle_npm_search(update, context)
+    elif callback_data == 'api_github_user':
+        from handlers.developer_handlers import handle_github_user
+        await handle_github_user(update, context)
+    elif callback_data == 'api_crypto':
+        from handlers.developer_handlers import handle_crypto_price_menu
+        await handle_crypto_price_menu(update, context)
+    elif callback_data.startswith('crypto_'):
+        from handlers.developer_handlers import handle_crypto_price
+        crypto = callback_data.replace('crypto_', '')
+        await handle_crypto_price(update, context, crypto)
+    elif callback_data == 'api_weather':
+        from handlers.developer_handlers import handle_weather
+        await handle_weather(update, context)
+    elif callback_data == 'api_quote':
+        from handlers.developer_handlers import handle_quote
+        await handle_quote(update, context)
+    elif callback_data == 'api_joke':
+        from handlers.developer_handlers import handle_joke
+        await handle_joke(update, context)
+    elif callback_data == 'api_caniuse':
+        await query.answer("🌐 Отправьте название веб-фичи (например: flexbox)", show_alert=True)
+        context.user_data['awaiting_input'] = 'api_caniuse'
+
     # Заглушка для неизвестных callback
     else:
         await query.answer(f"⚙️ Feature в разработке: {callback_data}", show_alert=True)

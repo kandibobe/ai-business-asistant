@@ -12,6 +12,10 @@ def get_main_menu_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("📊 Статистика", callback_data='stats'),
         ],
         [
+            InlineKeyboardButton("💻 Developer Tools", callback_data='developer_tools'),
+            InlineKeyboardButton("🤖 AI Chat", callback_data='ai_chat_mode'),
+        ],
+        [
             InlineKeyboardButton("⚙️ Настройки", callback_data='settings'),
             InlineKeyboardButton("❓ Помощь", callback_data='help'),
         ],
