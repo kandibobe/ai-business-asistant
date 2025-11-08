@@ -12,11 +12,18 @@ load_dotenv()
 def migrate_language_field():
     """Добавляет поле language в таблицу users если оно отсутствует"""
 
-    database_url = os.getenv('DATABASE_URL')
-    if not database_url:
-        print("❌ DATABASE_URL не найден в .env файле")
-        return False
+    # Собираем DATABASE_URL из параметров (как в database/database.py)
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PORT = os.getenv("DB_PORT")
+    DB_USER = os.getenv("DB_USER")
+    DB_PASS = os.getenv("DB_PASS")
+    DB_NAME = os.getenv("DB_NAME")
 
+    if not all([DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME]):
+        print("⚠️  Не все параметры БД найдены - пропускаем миграцию языков")
+        return True  # Не критично, вернем True чтобы бот продолжил работу
+
+    database_url = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     engine = create_engine(database_url)
 
     try:
@@ -46,7 +53,7 @@ def migrate_language_field():
             connection.execute(alter_query)
             connection.commit()
 
-            print("✅ Поле 'language' успешно добавлено в таблицу users")
+            print("✅ Поле 'language' успешно добавлено")
             print("🔄 Устанавливаем язык 'ru' для существующих пользователей...")
 
             # Устанавливаем русский язык для всех существующих пользователей
@@ -59,15 +66,15 @@ def migrate_language_field():
             connection.execute(update_query)
             connection.commit()
 
-            print("✅ Миграция language завершена успешно!")
+            print("✅ Миграция language завершена!")
             return True
 
     except (OperationalError, ProgrammingError) as e:
-        print(f"❌ Ошибка миграции: {e}")
-        return False
+        print(f"⚠️  Ошибка миграции: {e}")
+        return True  # Не критично, продолжаем
     except Exception as e:
-        print(f"❌ Неожиданная ошибка: {e}")
-        return False
+        print(f"⚠️  Неожиданная ошибка: {e}")
+        return True  # Не критично, продолжаем
     finally:
         engine.dispose()
 
