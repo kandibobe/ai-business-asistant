@@ -4,23 +4,49 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import google.generativeai as genai
 from sqlalchemy.orm import Session
+import re
+from urllib.parse import urlparse
 
 from database.database import SessionLocal
 from database import crud
 from handlers.common import get_main_menu_keyboard
+from tasks import scrape_url_task
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gemini_model: genai.GenerativeModel):
     user = update.effective_user
     question = update.message.text
-    
+
+    # Проверяем, содержит ли сообщение URL
+    url_pattern = r'https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&/=]*)'
+    urls = re.findall(url_pattern, question)
+
+    if urls:
+        # Если найден URL, запускаем скрапинг
+        url = urls[0]  # Берем первый найденный URL
+        await update.message.reply_text(
+            f"🌐 Обнаружен URL!\n\n"
+            f"Начинаю анализ веб-страницы: {url}\n"
+            f"Это может занять некоторое время... Уведомлю о готовности."
+        )
+
+        scrape_url_task.delay(
+            chat_id=update.message.chat_id,
+            user_id=user.id,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            url=url
+        )
+        return
+
     db: Session = SessionLocal()
     try:
         db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
-        
+
         # --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ---
         # active_document = crud.get_latest_document_for_user(db, db_user) # СТАРАЯ ЛОГИКА
         active_document = crud.get_active_document_for_user(db, db_user) # НОВАЯ ЛОГИКА
-        
+
         if not active_document:
             await update.message.reply_text(
                 "У вас не выбран активный документ. Выберите его из списка /mydocs или загрузите новый.",

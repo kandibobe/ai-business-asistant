@@ -24,18 +24,59 @@ services:
 
   # --- Сервис №2: Брокер сообщений Redis ---
   redis:
-    image: redis:7-alpine # Используем официальный, легковесный образ Redis 7
+    image: redis:7-alpine
     container_name: ai_bot_redis
     restart: always
     ports:
-      # Пробрасываем порт 6379 из контейнера на порт 6379 нашего компьютера.
       - "6379:6379"
     volumes:
-      # Сохраняем данные Redis (если они есть)
-      - ./redis_data:/data
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # --- Сервис №3: Telegram Bot ---
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_bot_app
+    restart: always
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://redis:6379/0
+
+  # --- Сервис №4: Celery Worker ---
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ai_bot_worker
+    restart: always
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://redis:6379/0
 
 volumes:
-  # Объявляем "тома" (volumes), которые мы использовали выше.
-  # Docker будет управлять этими папками.
   postgres_data:
   redis_data:
