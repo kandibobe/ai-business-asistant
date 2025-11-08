@@ -40,14 +40,50 @@ class Document(Base):
     __tablename__ = 'documents'
 
     id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, nullable=False)
+
+    # Основные поля
+    file_name = Column('filename', String, nullable=False)  # Используем alias для обратной совместимости
     file_path = Column(String, nullable=True)
-    extracted_text = Column(Text, nullable=True)
+    content = Column('extracted_text', Text, nullable=True)  # Alias для обратной совместимости
+
+    # Метаданные документа
+    document_type = Column(String, nullable=True)      # Тип: pdf, excel, word, audio, url
+    source_url = Column(String, nullable=True)         # URL источника (для web страниц)
+    file_size = Column(Integer, nullable=True)         # Размер файла в байтах
+
+    # Аналитические поля
+    word_count = Column(Integer, nullable=True)        # Количество слов
+    char_count = Column(Integer, nullable=True)        # Количество символов
+    language_detected = Column(String, nullable=True)  # Определенный язык
+
+    # AI обработка
+    summary = Column(Text, nullable=True)              # Краткое содержание от AI
+    keywords = Column(Text, nullable=True)             # Ключевые слова (JSON строка)
+
+    # Временные метки
     uploaded_at = Column(DateTime(timezone=True), server_default=now())
-    
+    processed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Связи
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    
     owner = relationship("User", back_populates="documents", foreign_keys=[user_id])
 
+    # Свойства для обратной совместимости
+    @property
+    def filename(self):
+        return self.file_name
+
+    @filename.setter
+    def filename(self, value):
+        self.file_name = value
+
+    @property
+    def extracted_text(self):
+        return self.content
+
+    @extracted_text.setter
+    def extracted_text(self, value):
+        self.content = value
+
     def __repr__(self):
-        return f"<Document(filename='{self.filename}')>"
+        return f"<Document(file_name='{self.file_name}', type='{self.document_type}')>"
