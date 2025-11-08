@@ -24,18 +24,23 @@ def get_user_stats(db: Session, user_id: int) -> Dict[str, Any]:
     if not user:
         return {}
 
-    # Подсчет документов по типам
+    # Подсчет документов по типам (теперь используем document_type поле!)
     documents = db.query(models.Document).filter(models.Document.user_id == user.id).all()
 
     # Общая статистика
     total_docs = len(documents)
 
-    # Подсчет по типам (анализируем расширения файлов)
-    pdf_count = sum(1 for doc in documents if doc.file_name.lower().endswith('.pdf'))
-    excel_count = sum(1 for doc in documents if doc.file_name.lower().endswith(('.xlsx', '.xls')))
-    word_count = sum(1 for doc in documents if doc.file_name.lower().endswith('.docx'))
-    url_count = sum(1 for doc in documents if doc.file_path.startswith('http'))
-    audio_count = sum(1 for doc in documents if doc.file_name.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')))
+    # Подсчет по типам - используем поле document_type
+    pdf_count = sum(1 for doc in documents if doc.document_type == 'pdf')
+    excel_count = sum(1 for doc in documents if doc.document_type == 'excel')
+    word_count = sum(1 for doc in documents if doc.document_type == 'word')
+    url_count = sum(1 for doc in documents if doc.document_type == 'url')
+    audio_count = sum(1 for doc in documents if doc.document_type == 'audio')
+
+    # Дополнительная статистика
+    total_words = sum(doc.word_count or 0 for doc in documents)
+    total_chars = sum(doc.char_count or 0 for doc in documents)
+    total_size = sum(doc.file_size or 0 for doc in documents)
 
     # Документы за текущий месяц
     month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -53,6 +58,9 @@ def get_user_stats(db: Session, user_id: int) -> Dict[str, Any]:
     # Упрощенная версия - можно улучшить с отдельной таблицей activity
     streak_days = calculate_streak(user.created_at)
 
+    # Форматируем размер
+    size_mb = total_size / (1024 * 1024) if total_size > 0 else 0
+
     return {
         'total_docs': total_docs,
         'active_doc': active_doc or 'Нет',
@@ -69,6 +77,11 @@ def get_user_stats(db: Session, user_id: int) -> Dict[str, Any]:
         'last_activity': datetime.now().strftime('%d.%m.%Y %H:%M'),
         'streak_days': streak_days,
         'is_premium': False,  # TODO: добавить premium tracking
+        # Новая статистика
+        'total_words': total_words,
+        'total_chars': total_chars,
+        'total_size_mb': round(size_mb, 2),
+        'avg_doc_words': round(total_words / total_docs, 0) if total_docs > 0 else 0,
     }
 
 def calculate_streak(created_at: datetime) -> int:
@@ -96,31 +109,47 @@ def get_document_stats(db: Session, doc_id: int) -> Dict[str, Any]:
     if not doc:
         return {}
 
-    # Определяем тип документа
-    file_name = doc.file_name.lower()
-    if file_name.endswith('.pdf'):
-        doc_type = 'PDF'
-    elif file_name.endswith(('.xlsx', '.xls')):
-        doc_type = 'Excel'
-    elif file_name.endswith('.docx'):
-        doc_type = 'Word'
-    elif doc.file_path.startswith('http'):
-        doc_type = 'URL'
-    elif file_name.endswith(('.mp3', '.wav', '.ogg', '.m4a')):
-        doc_type = 'Audio'
-    else:
-        doc_type = 'Unknown'
+    # Маппинг типов документов для отображения
+    type_display = {
+        'pdf': '📄 PDF',
+        'excel': '📊 Excel',
+        'word': '📝 Word',
+        'url': '🌐 URL',
+        'audio': '🎤 Audio',
+        'unknown': '📎 Unknown'
+    }
+
+    doc_type_display = type_display.get(doc.document_type, '📎 Unknown')
+
+    # Форматируем размер файла
+    size_display = 'N/A'
+    if doc.file_size:
+        if doc.file_size < 1024:
+            size_display = f"{doc.file_size} B"
+        elif doc.file_size < 1024 * 1024:
+            size_display = f"{doc.file_size / 1024:.1f} KB"
+        else:
+            size_display = f"{doc.file_size / (1024 * 1024):.1f} MB"
 
     return {
+        'id': doc.id,
         'name': doc.file_name,
-        'type': doc_type,
-        'size': 0,  # TODO: добавить хранение размера файла
-        'char_count': len(doc.content) if doc.content else 0,
+        'type': doc_type_display,
+        'type_raw': doc.document_type,
+        'size': size_display,
+        'file_size_bytes': doc.file_size or 0,
+        'word_count': doc.word_count or 0,
+        'char_count': doc.char_count or (len(doc.content) if doc.content else 0),
         'created_at': doc.created_at.strftime('%d.%m.%Y %H:%M'),
-        'processed': True,
+        'uploaded_at': doc.uploaded_at.strftime('%d.%m.%Y %H:%M') if doc.uploaded_at else 'N/A',
+        'processed_at': doc.processed_at.strftime('%d.%m.%Y %H:%M') if doc.processed_at else 'Не обработан',
+        'processed': doc.processed_at is not None,
+        'language': doc.language_detected or 'Не определен',
+        'summary': doc.summary or 'Нет краткого содержания',
+        'keywords': doc.keywords or 'Не извлечены',
+        'source_url': doc.source_url,
         'questions_count': 0,  # TODO: добавить tracking вопросов
         'rating': 0,  # TODO: добавить рейтинговую систему
-        'summary': '',  # TODO: добавить генерацию summary
     }
 
 def get_global_stats(db: Session) -> Dict[str, Any]:
