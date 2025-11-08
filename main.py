@@ -1,11 +1,13 @@
 # main.py
 import os
 import logging
+import traceback
 import google.generativeai as genai
 from dotenv import load_dotenv
 from functools import partial
 
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 
 from config import GEMINI_MODEL_NAME
 from handlers.common import start, clear_command, button_callback, my_docs_command
@@ -19,6 +21,30 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Глобальный обработчик ошибок для всех хендлеров бота."""
+    logger.error("❌ Произошла ошибка при обработке обновления:", exc_info=context.error)
+
+    # Отправляем сообщение пользователю о том, что произошла ошибка
+    try:
+        if isinstance(update, Update) and update.effective_message:
+            error_message = (
+                "⚠️ Произошла ошибка при обработке вашего запроса.\n\n"
+                "Пожалуйста, попробуйте еще раз или обратитесь к администратору."
+            )
+
+            # Для некоторых критических ошибок показываем детали
+            if context.error:
+                error_type = type(context.error).__name__
+                if "Database" in error_type or "SQL" in error_type:
+                    error_message += "\n\n💡 Возможно, требуется миграция базы данных. Запустите: python migrate_db.py"
+                elif "Connection" in error_type or "Network" in error_type:
+                    error_message += "\n\n💡 Проблема с подключением. Проверьте Redis и PostgreSQL."
+
+            await update.effective_message.reply_text(error_message)
+    except Exception as e:
+        logger.error(f"❌ Не удалось отправить сообщение об ошибке пользователю: {e}")
 
 def main() -> None:
     load_dotenv()
@@ -46,6 +72,9 @@ def main() -> None:
     # Используем partial, чтобы "закрепить" аргумент gemini_model за обработчиком
     message_handler_with_model = partial(handle_message, gemini_model=gemini_model)
 
+    # Регистрируем глобальный обработчик ошибок
+    application.add_error_handler(error_handler)
+
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("mydocs", my_docs_command))
     application.add_handler(CommandHandler("clear", clear_command))
@@ -60,7 +89,7 @@ def main() -> None:
 
     # Обработчик текстовых сообщений (вопросы по документам)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler_with_model))
-    
+
 
     logger.info("✅ Бот готов к работе и запускается...")
     application.run_polling()
