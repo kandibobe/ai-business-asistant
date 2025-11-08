@@ -47,14 +47,19 @@ def main() -> None:
     message_handler_with_model = partial(handle_message, gemini_model=gemini_model)
 
     application.add_handler(CommandHandler("start", start))
-    
+    application.add_handler(CommandHandler("mydocs", my_docs_command))
     application.add_handler(CommandHandler("clear", clear_command))
+
     application.add_handler(CallbackQueryHandler(button_callback))
-    application.add_handler(MessageHandler(filters.Document.PDF, handle_document))
+
+    # Обработчик для всех типов документов (PDF, Excel, Word)
+    application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+
+    # Обработчик для аудио и голосовых сообщений
     application.add_handler(MessageHandler(filters.AUDIO | filters.VOICE, handle_audio))
+
+    # Обработчик текстовых сообщений (вопросы по документам)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler_with_model))
-    
-    application.add_handler(CommandHandler("mydocs", my_docs_command)) # <<< ДОБАВЛЯЕМ НОВЫЙ ОБРАБОТЧИК
     
 
     logger.info("✅ Бот готов к работе и запускается...")
