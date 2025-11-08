@@ -1,4 +1,5 @@
 import os
+import sys
 import fitz  # PyMuPDF
 from pydub import AudioSegment
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
@@ -16,6 +17,15 @@ load_dotenv()
 from celery_app import app
 from database.database import SessionLocal
 from database import crud
+
+# Явно экспортируем все задачи для Celery
+__all__ = [
+    'process_pdf_task',
+    'transcribe_audio_task',
+    'process_excel_task',
+    'process_word_task',
+    'scrape_url_task',
+]
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 if not TELEGRAM_BOT_TOKEN:
