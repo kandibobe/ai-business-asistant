@@ -27,6 +27,11 @@ from .messages import (
     format_premium_promo,
     format_comparison_table,
 )
+from .reply_keyboards import (
+    get_main_reply_keyboard,
+    get_minimal_reply_keyboard,
+    remove_reply_keyboard,
+)
 
 __all__ = [
     # Keyboards
@@ -42,6 +47,10 @@ __all__ = [
     'get_confirm_keyboard',
     'get_quick_actions_reply_keyboard',
     'get_pagination_keyboard',
+    # Reply Keyboards
+    'get_main_reply_keyboard',
+    'get_minimal_reply_keyboard',
+    'remove_reply_keyboard',
     # Messages
     'format_welcome_message',
     'format_stats_message',

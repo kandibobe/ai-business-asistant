@@ -50,7 +50,7 @@ del /s /q *.pyc >nul 2>&1
 
 echo [5/7] Запуск миграции базы данных...
 echo.
-echo [5a] Миграция таблицы users...
+echo [5a] Миграция таблицы users (базовая)...
 python migrate_db.py
 if errorlevel 1 (
     echo.
@@ -70,6 +70,22 @@ if errorlevel 1 (
     echo [ERROR] Ошибка при миграции таблицы documents!
     pause
     exit /b 1
+)
+echo.
+echo [5c] Миграция настроек пользователей...
+python migrate_user_preferences.py
+if errorlevel 1 (
+    echo.
+    echo [ВНИМАНИЕ] Ошибка при миграции настроек
+    echo Продолжаем работу...
+)
+echo.
+echo [5d] Миграция языковых настроек...
+python migrate_language.py
+if errorlevel 1 (
+    echo.
+    echo [ВНИМАНИЕ] Ошибка при миграции языков
+    echo Продолжаем работу...
 )
 
 echo.
