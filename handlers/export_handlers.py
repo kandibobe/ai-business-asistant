@@ -67,21 +67,21 @@ async def handle_export_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             'file_size': f"{len(document.content) // 1024} KB",
         }
 
-        # Краткое содержание (первые 2000 символов)
-        content_preview = document.content[:2000] if document.content else "Содержимое недоступно"
+        # Content summary (first 2000 characters)
+        content_preview = document.content[:2000] if document.content else "Content unavailable"
 
-        # TODO: Добавить историю вопросов из БД когда будет реализовано
+        # TODO: Add question history from DB when implemented
         questions_history = []
 
         pdf_bytes = create_document_report(
             document_name=document.file_name,
             document_content=content_preview,
-            analysis_results=doc_stats.get('summary', 'Анализ не выполнен'),
+            analysis_results=doc_stats.get('summary', 'Analysis not performed'),
             questions_history=questions_history,
             metadata=metadata
         )
 
-        # Отправляем PDF файл
+        # Send PDF file
         pdf_file = io.BytesIO(pdf_bytes)
         pdf_file.name = f"report_{document.file_name}.pdf"
 

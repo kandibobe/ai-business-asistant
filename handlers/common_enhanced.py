@@ -298,31 +298,31 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             parse_mode='HTML'
         )
 
-    # Изменение языка
+    # Language change
     elif callback_data.startswith('lang_'):
         lang_code = callback_data.split('_')[1]
-        # TODO: Сохранить язык в БД
+        # TODO: Save language to DB
         await query.edit_message_text(
-            text=f"✅ Язык изменен! (Feature в разработке)\n\nSelected: {lang_code.upper()}",
+            text=f"✅ Language changed! (Feature in development)\n\nSelected: {lang_code.upper()}",
             reply_markup=get_main_menu_keyboard(),
             parse_mode='HTML'
         )
 
-    # Режим AI
+    # AI mode
     elif callback_data == 'ai_mode':
         await query.edit_message_text(
-            text="🤖 <b>Выберите режим AI:</b>",
+            text="🤖 <b>Select AI mode:</b>",
             reply_markup=get_ai_mode_keyboard(),
             parse_mode='HTML'
         )
 
-    # Изменение режима AI
+    # AI mode change
     elif callback_data.startswith('mode_'):
         mode = callback_data.split('_')[1]
-        # TODO: Сохранить режим в БД
-        mode_names = {'fast': 'Быстрый', 'standard': 'Стандартный', 'advanced': 'Продвинутый'}
+        # TODO: Save mode to DB
+        mode_names = {'fast': 'Fast', 'standard': 'Standard', 'advanced': 'Advanced'}
         await query.edit_message_text(
-            text=f"✅ Режим изменен на: <b>{mode_names.get(mode, mode)}</b>",
+            text=f"✅ Mode changed to: <b>{mode_names.get(mode, mode)}</b>",
             reply_markup=get_settings_keyboard(),
             parse_mode='HTML'
         )
@@ -335,7 +335,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             parse_mode='HTML'
         )
 
-    # Сравнение тарифов
+    # Compare plans
     elif callback_data == 'compare_plans':
         await query.edit_message_text(
             text=format_comparison_table(),
@@ -343,15 +343,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             parse_mode='HTML'
         )
 
-    # Пробный период
+    # Trial period
     elif callback_data == 'trial':
         await query.edit_message_text(
-            text="🎁 <b>Пробный период активирован!</b>\n\nУ вас есть 7 дней Premium доступа.\n(Feature в разработке)",
+            text="🎁 <b>Trial period activated!</b>\n\nYou have 7 days of Premium access.\n(Feature in development)",
             reply_markup=get_main_menu_keyboard(),
             parse_mode='HTML'
         )
 
-    # Просмотр документа
+    # View document
     elif callback_data.startswith('doc_'):
         doc_id = int(callback_data.split('_')[1])
         db: Session = SessionLocal()
@@ -366,7 +366,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         finally:
             db.close()
 
-    # Активировать документ
+    # Activate document
     elif callback_data.startswith('activate_'):
         doc_id = int(callback_data.split('_')[1])
         user = update.effective_user
@@ -374,8 +374,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         try:
             db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
             crud.set_active_document(db, db_user, doc_id)
-            await query.answer("✅ Документ активирован!")
-            # Обновляем сообщение
+            await query.answer("✅ Document activated!")
+            # Update message
             doc_stats = get_document_stats(db, doc_id)
             await query.edit_message_text(
                 text=format_document_info(doc_stats),
@@ -385,17 +385,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         finally:
             db.close()
 
-    # Удалить документ
+    # Delete document
     elif callback_data.startswith('delete_'):
         doc_id = int(callback_data.split('_')[1])
-        # TODO: Добавить подтверждение удаления
-        await query.answer("🗑️ Удаление документов будет добавлено", show_alert=True)
+        # TODO: Add deletion confirmation
+        await query.answer("🗑️ Document deletion will be added", show_alert=True)
 
-    # Очистить все
+    # Clear all
     elif callback_data == 'clear_all':
         await clear_command(update, context)
 
-    # Пагинация документов
+    # Document pagination
     elif callback_data.startswith('docs_page_'):
         page = int(callback_data.split('_')[2])
         context.user_data['docs_page'] = page
