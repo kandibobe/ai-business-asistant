@@ -1,6 +1,6 @@
 """
-Обработчики для Developer Tools и AI Chat.
-Включает инструменты разработчика и AI чат без документов.
+Handlers for Developer Tools and AI Chat.
+Includes developer tools and AI chat without documents.
 """
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from database.database import SessionLocal
 from database import crud
+from config.i18n import get_text
+from utils.user_utils import get_user_language
 from utils.developer_tools import (
     format_json, minify_json, validate_json,
     encode_base64, decode_base64,
@@ -45,22 +47,12 @@ from config.ai_personas import build_ai_prompt, AI_ROLES, RESPONSE_STYLES
 # --- Developer Tools Main Menu ---
 
 async def handle_developer_tools(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Главное меню инструментов разработчика"""
+    """Main menu for developer tools"""
     query = update.callback_query
     await query.answer()
 
-    message = """
-💻 <b>Developer Tools</b>
-
-Набор инструментов для разработчиков:
-
-🛠️ <b>Утилиты</b> - JSON, Base64, Hash, UUID, Regex, Cron
-💻 <b>Форматтеры</b> - форматирование кода и данных
-🔐 <b>Генераторы</b> - генерация UUID, паролей, хешей
-🔌 <b>Интеграции</b> - GitHub, NPM, Crypto, Weather
-
-💡 Все инструменты бесплатные и не требуют API ключей!
-"""
+    lang = get_user_language(update, context)
+    message = get_text('dev_tools_title', lang)
 
     await query.edit_message_text(
         text=message,
@@ -72,26 +64,12 @@ async def handle_developer_tools(update: Update, context: ContextTypes.DEFAULT_T
 # --- Utilities Menu ---
 
 async def handle_utilities_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Меню утилит"""
+    """Utilities menu"""
     query = update.callback_query
     await query.answer()
 
-    message = """
-🛠️ <b>Утилиты для разработчиков</b>
-
-Выберите инструмент:
-
-📊 <b>JSON</b> - валидация, форматирование, минификация
-🔣 <b>Base64</b> - кодирование/декодирование
-🔐 <b>Hash</b> - MD5, SHA1, SHA256, SHA512
-🆔 <b>UUID</b> - генерация UUID v4
-🔍 <b>Regex</b> - тестирование регулярных выражений
-🕐 <b>Cron</b> - парсинг cron выражений
-🔢 <b>Калькулятор</b> - с HEX/Binary
-🎨 <b>Цвета</b> - конвертация HEX ↔ RGB
-
-💡 Просто отправьте данные после выбора инструмента
-"""
+    lang = get_user_language(update, context)
+    message = get_text('dev_utilities_menu', lang)
 
     await query.edit_message_text(
         text=message,
@@ -103,20 +81,12 @@ async def handle_utilities_menu(update: Update, context: ContextTypes.DEFAULT_TY
 # --- JSON Tools ---
 
 async def handle_json_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """JSON инструменты"""
+    """JSON tools"""
     query = update.callback_query
     await query.answer()
 
-    message = """
-📊 <b>JSON Инструменты</b>
-
-Доступные действия:
-✅ <b>Validate</b> - проверить корректность JSON
-📝 <b>Format</b> - красиво отформатировать
-🗜️ <b>Minify</b> - сжать в одну строку
-
-💡 Выберите действие, затем отправьте JSON в чат
-"""
+    lang = get_user_language(update, context)
+    message = get_text('json_tools_menu', lang)
 
     await query.edit_message_text(
         text=message,
@@ -126,33 +96,29 @@ async def handle_json_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def handle_json_action(update: Update, context: ContextTypes.DEFAULT_TYPE, action: str) -> None:
-    """Обработка JSON действий"""
+    """Handle JSON actions"""
     query = update.callback_query
     await query.answer()
 
-    # Устанавливаем ожидание ввода
+    lang = get_user_language(update, context)
+
+    # Set awaiting input
     context.user_data['awaiting_input'] = action
 
+    # Get translated message based on action
     actions_map = {
-        'json_validate': ('✅ Валидация JSON', 'Отправьте JSON для проверки'),
-        'json_format': ('📝 Форматирование JSON', 'Отправьте JSON для форматирования'),
-        'json_minify': ('🗜️ Минификация JSON', 'Отправьте JSON для сжатия'),
+        'json_validate': 'awaiting_json_validate',
+        'json_format': 'awaiting_json_format',
+        'json_minify': 'awaiting_json_minify',
     }
 
-    title, instruction = actions_map.get(action, ('JSON', 'Отправьте JSON'))
+    message_key = actions_map.get(action, 'awaiting_json_validate')
+    message = get_text(message_key, lang)
 
-    message = f"""
-{title}
-
-📤 {instruction}
-
-<i>Пример:</i>
-<code>{{"name": "John", "age": 30}}</code>
-
-⏳ Ожидаю ваш JSON...
-"""
-
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_utilities')]]
+    keyboard = [[InlineKeyboardButton(
+        get_text('btn_cancel', lang),
+        callback_data='dev_utilities'
+    )]]
 
     await query.edit_message_text(
         text=message,
@@ -164,37 +130,23 @@ async def handle_json_action(update: Update, context: ContextTypes.DEFAULT_TYPE,
 # --- Base64 Tools ---
 
 async def handle_base64_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Base64 кодирование/декодирование"""
+    """Base64 encoding/decoding"""
     query = update.callback_query
     await query.answer()
 
+    lang = get_user_language(update, context)
     action = query.data
     context.user_data['awaiting_input'] = action
 
     if action == 'tool_base64_encode':
-        message = """
-🔣 <b>Base64 Encoding</b>
-
-📤 Отправьте текст для кодирования
-
-<i>Пример:</i>
-<code>Hello World</code>
-
-⏳ Ожидаю текст...
-"""
+        message = get_text('awaiting_base64_encode', lang)
     else:  # decode
-        message = """
-🔓 <b>Base64 Decoding</b>
+        message = get_text('awaiting_base64_decode', lang)
 
-📤 Отправьте Base64 строку для декодирования
-
-<i>Пример:</i>
-<code>SGVsbG8gV29ybGQ=</code>
-
-⏳ Ожидаю Base64...
-"""
-
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_utilities')]]
+    keyboard = [[InlineKeyboardButton(
+        get_text('btn_cancel', lang),
+        callback_data='dev_utilities'
+    )]]
 
     await query.edit_message_text(
         text=message,
@@ -206,22 +158,12 @@ async def handle_base64_tool(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # --- Hash Tools ---
 
 async def handle_hash_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Меню выбора алгоритма хеширования"""
+    """Hash algorithm selection menu"""
     query = update.callback_query
     await query.answer()
 
-    message = """
-🔐 <b>Hash Generator</b>
-
-Выберите алгоритм хеширования:
-
-• <b>MD5</b> - 128 bit (не рекомендуется для безопасности)
-• <b>SHA1</b> - 160 bit
-• <b>SHA256</b> - 256 bit (рекомендуется)
-• <b>SHA512</b> - 512 bit (максимальная безопасность)
-
-💡 После выбора отправьте текст для хеширования
-"""
+    lang = get_user_language(update, context)
+    message = get_text('hash_menu', lang)
 
     await query.edit_message_text(
         text=message,
@@ -231,26 +173,20 @@ async def handle_hash_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def handle_hash_algorithm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Выбор алгоритма хеширования"""
+    """Hash algorithm selection"""
     query = update.callback_query
     await query.answer()
 
+    lang = get_user_language(update, context)
     algorithm = query.data.replace('hash_', '')
     context.user_data['awaiting_input'] = f'hash_{algorithm}'
 
-    message = f"""
-🔐 <b>Hash Generator - {algorithm.upper()}</b>
+    message = get_text('awaiting_hash', lang, algorithm=algorithm.upper())
 
-📤 Отправьте текст для хеширования
-
-<i>Примеры:</i>
-<code>password123</code>
-<code>mySecretKey</code>
-
-⏳ Ожидаю текст...
-"""
-
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='tool_hash')]]
+    keyboard = [[InlineKeyboardButton(
+        get_text('btn_cancel', lang),
+        callback_data='tool_hash'
+    )]]
 
     await query.edit_message_text(
         text=message,
@@ -468,26 +404,12 @@ async def handle_generators_menu(update: Update, context: ContextTypes.DEFAULT_T
 # --- Integrations Menu ---
 
 async def handle_integrations_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Меню интеграций"""
+    """Integrations menu"""
     query = update.callback_query
     await query.answer()
 
-    message = """
-🔌 <b>Бесплатные API интеграции</b>
-
-Доступные сервисы:
-
-🐙 <b>GitHub</b> - поиск репозиториев
-📦 <b>NPM</b> - информация о пакетах
-👤 <b>GitHub User</b> - профили пользователей
-🌐 <b>Can I Use</b> - поддержка веб-фичей
-💰 <b>Crypto Price</b> - цены криптовалют
-🌤️ <b>Weather</b> - погода в городах
-💭 <b>Quote</b> - мотивационные цитаты
-😄 <b>Joke</b> - шутки для программистов
-
-💡 Все API бесплатные, без ключей!
-"""
+    lang = get_user_language(update, context)
+    message = get_text('integrations_menu', lang)
 
     await query.edit_message_text(
         text=message,
@@ -729,10 +651,11 @@ async def handle_joke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 # --- AI Chat Mode (without documents) ---
 
 async def handle_ai_chat_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """AI Chat режим без документов"""
+    """AI Chat mode without documents"""
     query = update.callback_query
     await query.answer()
 
+    lang = get_user_language(update, context)
     user = update.effective_user
     db: Session = SessionLocal()
     try:
@@ -743,24 +666,12 @@ async def handle_ai_chat_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         from config.ai_personas import get_role_display_name, get_style_display_name
 
-        message = f"""
-🤖 <b>AI Chat Mode</b>
-
-Режим свободного общения с AI без документов.
-
-<b>Текущие настройки:</b>
-🎭 Роль: {get_role_display_name(role)}
-📝 Стиль: {get_style_display_name(style)}
-
-💬 Просто напишите свой вопрос в чат, и AI ответит!
-
-<i>Примеры вопросов:</i>
-• Объясни что такое async/await в Python
-• Как работает REST API?
-• Какие лучшие практики для Git?
-
-💡 Вы можете сменить роль или стиль ответов ниже
-"""
+        message = get_text(
+            'ai_chat_title',
+            lang,
+            role=get_role_display_name(role),
+            style=get_style_display_name(style)
+        )
 
         context.user_data['ai_chat_mode'] = True
 

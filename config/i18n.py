@@ -1,6 +1,6 @@
 """
-Модуль интернационализации (i18n) для поддержки нескольких языков.
-Поддерживаемые языки: Русский (ru), English (en), Deutsch (de)
+Internationalization (i18n) module for multi-language support.
+Supported languages: Russian (ru), English (en), German (de)
 """
 
 LANGUAGES = {
@@ -224,29 +224,91 @@ TRANSLATIONS = {
         'en': '✅ Success!',
         'de': '✅ Erfolgreich!',
     },
+
+    # Developer Tools - Detailed messages
+    'dev_tools_title': {
+        'ru': '💻 <b>Developer Tools</b>\n\nНабор инструментов для разработчиков:\n\n🛠️ <b>Утилиты</b> - JSON, Base64, Hash, UUID, Regex, Cron\n💻 <b>Форматтеры</b> - форматирование кода и данных\n🔐 <b>Генераторы</b> - генерация UUID, паролей, хешей\n🔌 <b>Интеграции</b> - GitHub, NPM, Crypto, Weather\n\n💡 Все инструменты бесплатные и не требуют API ключей!',
+        'en': '💻 <b>Developer Tools</b>\n\nDeveloper toolkit:\n\n🛠️ <b>Utilities</b> - JSON, Base64, Hash, UUID, Regex, Cron\n💻 <b>Formatters</b> - code and data formatting\n🔐 <b>Generators</b> - UUID, password, hash generation\n🔌 <b>Integrations</b> - GitHub, NPM, Crypto, Weather\n\n💡 All tools are free and require no API keys!',
+        'de': '💻 <b>Entwickler-Tools</b>\n\nEntwickler-Toolkit:\n\n🛠️ <b>Dienstprogramme</b> - JSON, Base64, Hash, UUID, Regex, Cron\n💻 <b>Formatierer</b> - Code- und Datenformatierung\n🔐 <b>Generatoren</b> - UUID-, Passwort-, Hash-Generierung\n🔌 <b>Integrationen</b> - GitHub, NPM, Crypto, Weather\n\n💡 Alle Tools sind kostenlos und benötigen keine API-Schlüssel!',
+    },
+    'dev_utilities_menu': {
+        'ru': '🛠️ <b>Утилиты для разработчиков</b>\n\nВыберите инструмент:\n\n📊 <b>JSON</b> - валидация, форматирование, минификация\n🔣 <b>Base64</b> - кодирование/декодирование\n🔐 <b>Hash</b> - MD5, SHA1, SHA256, SHA512\n🆔 <b>UUID</b> - генерация UUID v4\n🔍 <b>Regex</b> - тестирование регулярных выражений\n🕐 <b>Cron</b> - парсинг cron выражений\n🔢 <b>Калькулятор</b> - с HEX/Binary\n🎨 <b>Цвета</b> - конвертация HEX ↔ RGB\n\n💡 Просто отправьте данные после выбора инструмента',
+        'en': '🛠️ <b>Developer Utilities</b>\n\nSelect a tool:\n\n📊 <b>JSON</b> - validation, formatting, minification\n🔣 <b>Base64</b> - encoding/decoding\n🔐 <b>Hash</b> - MD5, SHA1, SHA256, SHA512\n🆔 <b>UUID</b> - UUID v4 generation\n🔍 <b>Regex</b> - regular expression testing\n🕐 <b>Cron</b> - cron expression parsing\n🔢 <b>Calculator</b> - with HEX/Binary\n🎨 <b>Colors</b> - HEX ↔ RGB conversion\n\n💡 Just send data after selecting a tool',
+        'de': '🛠️ <b>Entwickler-Dienstprogramme</b>\n\nWählen Sie ein Tool:\n\n📊 <b>JSON</b> - Validierung, Formatierung, Minifizierung\n🔣 <b>Base64</b> - Kodierung/Dekodierung\n🔐 <b>Hash</b> - MD5, SHA1, SHA256, SHA512\n🆔 <b>UUID</b> - UUID v4-Generierung\n🔍 <b>Regex</b> - Reguläre Ausdrücke testen\n🕐 <b>Cron</b> - Cron-Ausdrücke parsen\n🔢 <b>Rechner</b> - mit HEX/Binary\n🎨 <b>Farben</b> - HEX ↔ RGB Konvertierung\n\n💡 Senden Sie einfach Daten nach Auswahl eines Tools',
+    },
+    'json_tools_menu': {
+        'ru': '📊 <b>JSON Инструменты</b>\n\nДоступные действия:\n✅ <b>Validate</b> - проверить корректность JSON\n📝 <b>Format</b> - красиво отформатировать\n🗜️ <b>Minify</b> - сжать в одну строку\n\n💡 Выберите действие, затем отправьте JSON в чат',
+        'en': '📊 <b>JSON Tools</b>\n\nAvailable actions:\n✅ <b>Validate</b> - check JSON correctness\n📝 <b>Format</b> - beautify formatting\n🗜️ <b>Minify</b> - compress to one line\n\n💡 Select action, then send JSON to chat',
+        'de': '📊 <b>JSON-Tools</b>\n\nVerfügbare Aktionen:\n✅ <b>Validate</b> - JSON-Korrektheit prüfen\n📝 <b>Format</b> - Schön formatieren\n🗜️ <b>Minify</b> - In eine Zeile komprimieren\n\n💡 Aktion wählen, dann JSON in Chat senden',
+    },
+    'awaiting_json_validate': {
+        'ru': '✅ Валидация JSON\n\n📤 Отправьте JSON для проверки\n\n<i>Пример:</i>\n<code>{"name": "John", "age": 30}</code>\n\n⏳ Ожидаю ваш JSON...',
+        'en': '✅ JSON Validation\n\n📤 Send JSON for validation\n\n<i>Example:</i>\n<code>{"name": "John", "age": 30}</code>\n\n⏳ Awaiting your JSON...',
+        'de': '✅ JSON-Validierung\n\n📤 Senden Sie JSON zur Validierung\n\n<i>Beispiel:</i>\n<code>{"name": "John", "age": 30}</code>\n\n⏳ Warte auf Ihr JSON...',
+    },
+    'awaiting_json_format': {
+        'ru': '📝 Форматирование JSON\n\n📤 Отправьте JSON для форматирования\n\n<i>Пример:</i>\n<code>{"name":"John","age":30}</code>\n\n⏳ Ожидаю ваш JSON...',
+        'en': '📝 JSON Formatting\n\n📤 Send JSON for formatting\n\n<i>Example:</i>\n<code>{"name":"John","age":30}</code>\n\n⏳ Awaiting your JSON...',
+        'de': '📝 JSON-Formatierung\n\n📤 Senden Sie JSON zur Formatierung\n\n<i>Beispiel:</i>\n<code>{"name":"John","age":30}</code>\n\n⏳ Warte auf Ihr JSON...',
+    },
+    'awaiting_json_minify': {
+        'ru': '🗜️ Минификация JSON\n\n📤 Отправьте JSON для сжатия\n\n<i>Пример:</i>\n<code>{\n  "name": "John",\n  "age": 30\n}</code>\n\n⏳ Ожидаю ваш JSON...',
+        'en': '🗜️ JSON Minification\n\n📤 Send JSON for compression\n\n<i>Example:</i>\n<code>{\n  "name": "John",\n  "age": 30\n}</code>\n\n⏳ Awaiting your JSON...',
+        'de': '🗜️ JSON-Minifikation\n\n📤 Senden Sie JSON zur Komprimierung\n\n<i>Beispiel:</i>\n<code>{\n  "name": "John",\n  "age": 30\n}</code>\n\n⏳ Warte auf Ihr JSON...',
+    },
+    'awaiting_base64_encode': {
+        'ru': '🔣 <b>Base64 Encoding</b>\n\n📤 Отправьте текст для кодирования\n\n<i>Пример:</i>\n<code>Hello World</code>\n\n⏳ Ожидаю текст...',
+        'en': '🔣 <b>Base64 Encoding</b>\n\n📤 Send text for encoding\n\n<i>Example:</i>\n<code>Hello World</code>\n\n⏳ Awaiting text...',
+        'de': '🔣 <b>Base64-Kodierung</b>\n\n📤 Senden Sie Text zur Kodierung\n\n<i>Beispiel:</i>\n<code>Hallo Welt</code>\n\n⏳ Warte auf Text...',
+    },
+    'awaiting_base64_decode': {
+        'ru': '🔓 <b>Base64 Decoding</b>\n\n📤 Отправьте Base64 строку для декодирования\n\n<i>Пример:</i>\n<code>SGVsbG8gV29ybGQ=</code>\n\n⏳ Ожидаю Base64...',
+        'en': '🔓 <b>Base64 Decoding</b>\n\n📤 Send Base64 string for decoding\n\n<i>Example:</i>\n<code>SGVsbG8gV29ybGQ=</code>\n\n⏳ Awaiting Base64...',
+        'de': '🔓 <b>Base64-Dekodierung</b>\n\n📤 Senden Sie Base64-String zur Dekodierung\n\n<i>Beispiel:</i>\n<code>SGVsbG8gV29ybGQ=</code>\n\n⏳ Warte auf Base64...',
+    },
+    'hash_menu': {
+        'ru': '🔐 <b>Hash Generator</b>\n\nВыберите алгоритм хеширования:\n\n• <b>MD5</b> - 128 bit (не рекомендуется для безопасности)\n• <b>SHA1</b> - 160 bit\n• <b>SHA256</b> - 256 bit (рекомендуется)\n• <b>SHA512</b> - 512 bit (максимальная безопасность)\n\n💡 После выбора отправьте текст для хеширования',
+        'en': '🔐 <b>Hash Generator</b>\n\nSelect hashing algorithm:\n\n• <b>MD5</b> - 128 bit (not recommended for security)\n• <b>SHA1</b> - 160 bit\n• <b>SHA256</b> - 256 bit (recommended)\n• <b>SHA512</b> - 512 bit (maximum security)\n\n💡 After selection, send text for hashing',
+        'de': '🔐 <b>Hash-Generator</b>\n\nWählen Sie Hash-Algorithmus:\n\n• <b>MD5</b> - 128 bit (nicht empfohlen für Sicherheit)\n• <b>SHA1</b> - 160 bit\n• <b>SHA256</b> - 256 bit (empfohlen)\n• <b>SHA512</b> - 512 bit (maximale Sicherheit)\n\n💡 Nach Auswahl Text zum Hashen senden',
+    },
+    'awaiting_hash': {
+        'ru': '🔐 <b>Hash Generator - {algorithm}</b>\n\n📤 Отправьте текст для хеширования\n\n<i>Примеры:</i>\n<code>password123</code>\n<code>mySecretKey</code>\n\n⏳ Ожидаю текст...',
+        'en': '🔐 <b>Hash Generator - {algorithm}</b>\n\n📤 Send text for hashing\n\n<i>Examples:</i>\n<code>password123</code>\n<code>mySecretKey</code>\n\n⏳ Awaiting text...',
+        'de': '🔐 <b>Hash-Generator - {algorithm}</b>\n\n📤 Senden Sie Text zum Hashen\n\n<i>Beispiele:</i>\n<code>passwort123</code>\n<code>meinGeheimSchlüssel</code>\n\n⏳ Warte auf Text...',
+    },
+    'integrations_menu': {
+        'ru': '🔌 <b>Бесплатные API интеграции</b>\n\nДоступные сервисы:\n\n🐙 <b>GitHub</b> - поиск репозиториев\n📦 <b>NPM</b> - информация о пакетах\n👤 <b>GitHub User</b> - профили пользователей\n🌐 <b>Can I Use</b> - поддержка веб-фичей\n💰 <b>Crypto Price</b> - цены криптовалют\n🌤️ <b>Weather</b> - погода в городах\n💭 <b>Quote</b> - мотивационные цитаты\n😄 <b>Joke</b> - шутки для программистов\n\n💡 Все API бесплатные, без ключей!',
+        'en': '🔌 <b>Free API Integrations</b>\n\nAvailable services:\n\n🐙 <b>GitHub</b> - repository search\n📦 <b>NPM</b> - package information\n👤 <b>GitHub User</b> - user profiles\n🌐 <b>Can I Use</b> - web feature support\n💰 <b>Crypto Price</b> - cryptocurrency prices\n🌤️ <b>Weather</b> - city weather\n💭 <b>Quote</b> - motivational quotes\n😄 <b>Joke</b> - programmer jokes\n\n💡 All APIs are free, no keys needed!',
+        'de': '🔌 <b>Kostenlose API-Integrationen</b>\n\nVerfügbare Dienste:\n\n🐙 <b>GitHub</b> - Repository-Suche\n📦 <b>NPM</b> - Paketinformationen\n👤 <b>GitHub User</b> - Benutzerprofile\n🌐 <b>Can I Use</b> - Web-Feature-Unterstützung\n💰 <b>Crypto Price</b> - Kryptowährungspreise\n🌤️ <b>Weather</b> - Stadtwetter\n💭 <b>Quote</b> - Motivationszitate\n😄 <b>Joke</b> - Programmierer-Witze\n\n💡 Alle APIs sind kostenlos, keine Schlüssel erforderlich!',
+    },
+    'upload_instruction': {
+        'ru': '📤 <b>Загрузка документа</b>\n\nОтправьте мне файл одного из форматов:\n• 📄 PDF\n• 📊 Excel (.xlsx, .xls)\n• 📝 Word (.docx)\n• 🎤 Аудио (для транскрипции)\n• 🌐 URL (ссылка на веб-страницу)\n\nЯ обработаю его и вы сможете задавать вопросы по содержимому!',
+        'en': '📤 <b>Upload Document</b>\n\nSend me a file in one of these formats:\n• 📄 PDF\n• 📊 Excel (.xlsx, .xls)\n• 📝 Word (.docx)\n• 🎤 Audio (for transcription)\n• 🌐 URL (web page link)\n\nI\'ll process it and you can ask questions about the content!',
+        'de': '📤 <b>Dokument hochladen</b>\n\nSenden Sie mir eine Datei in einem dieser Formate:\n• 📄 PDF\n• 📊 Excel (.xlsx, .xls)\n• 📝 Word (.docx)\n• 🎤 Audio (zur Transkription)\n• 🌐 URL (Webseiten-Link)\n\nIch verarbeite es und Sie können Fragen zum Inhalt stellen!',
+    },
 }
 
 def get_text(key: str, lang: str = 'ru', **kwargs) -> str:
     """
-    Получает переведенный текст для указанного ключа и языка.
+    Get translated text for specified key and language.
 
     Args:
-        key: Ключ текста
-        lang: Код языка (ru, en, de)
-        **kwargs: Параметры для форматирования строки
+        key: Text key
+        lang: Language code (ru, en, de)
+        **kwargs: Parameters for string formatting
 
     Returns:
-        Переведенный и отформатированный текст
+        Translated and formatted text
     """
-    # Проверяем валидность языка
+    # Validate language
     if lang not in LANGUAGES:
         lang = 'ru'
 
-    # Получаем текст
+    # Get text
     text_dict = TRANSLATIONS.get(key, {})
     text = text_dict.get(lang, text_dict.get('ru', f'[{key}]'))
 
-    # Форматируем если есть параметры
+    # Format if parameters provided
     if kwargs:
         try:
             text = text.format(**kwargs)
@@ -256,9 +318,9 @@ def get_text(key: str, lang: str = 'ru', **kwargs) -> str:
     return text
 
 def get_language_name(lang_code: str) -> str:
-    """Возвращает название языка с флагом"""
+    """Returns language name with flag"""
     return LANGUAGES.get(lang_code, LANGUAGES['ru'])
 
 def get_available_languages() -> dict:
-    """Возвращает список доступных языков"""
+    """Returns list of available languages"""
     return LANGUAGES.copy()
