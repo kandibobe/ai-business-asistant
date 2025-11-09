@@ -1,6 +1,6 @@
 """
-Миграция для добавления поля language в таблицу users.
-Запускается автоматически при старте бота.
+Migration to add language field to users table.
+Runs automatically on bot startup.
 """
 import os
 from sqlalchemy import create_engine, text
@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def migrate_language_field():
-    """Добавляет поле language в таблицу users если оно отсутствует"""
+    """Adds language field to users table if it doesn't exist"""
 
-    # Собираем DATABASE_URL из параметров (как в database/database.py)
+    # Build DATABASE_URL from parameters (like in database/database.py)
     DB_HOST = os.getenv("DB_HOST")
     DB_PORT = os.getenv("DB_PORT")
     DB_USER = os.getenv("DB_USER")
@@ -20,15 +20,15 @@ def migrate_language_field():
     DB_NAME = os.getenv("DB_NAME")
 
     if not all([DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME]):
-        print("⚠️  Не все параметры БД найдены - пропускаем миграцию языков")
-        return True  # Не критично, вернем True чтобы бот продолжил работу
+        print("⚠️  Not all DB parameters found - skipping language migration")
+        return True  # Not critical, return True to allow bot to continue
 
     database_url = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     engine = create_engine(database_url)
 
     try:
         with engine.connect() as connection:
-            # Проверяем, существует ли уже колонка language
+            # Check if language column already exists
             check_query = text("""
                 SELECT column_name
                 FROM information_schema.columns
@@ -39,11 +39,11 @@ def migrate_language_field():
             exists = result.fetchone() is not None
 
             if exists:
-                print("✅ Поле 'language' уже существует в таблице users")
+                print("✅ Field 'language' already exists in users table")
                 return True
 
-            # Добавляем колонку language
-            print("📝 Добавляем поле 'language' в таблицу users...")
+            # Add language column
+            print("📝 Adding 'language' field to users table...")
 
             alter_query = text("""
                 ALTER TABLE users
@@ -53,10 +53,10 @@ def migrate_language_field():
             connection.execute(alter_query)
             connection.commit()
 
-            print("✅ Поле 'language' успешно добавлено")
-            print("🔄 Устанавливаем язык 'ru' для существующих пользователей...")
+            print("✅ Field 'language' successfully added")
+            print("🔄 Setting language 'ru' for existing users...")
 
-            # Устанавливаем русский язык для всех существующих пользователей
+            # Set Russian language for all existing users
             update_query = text("""
                 UPDATE users
                 SET language = 'ru'
@@ -66,15 +66,15 @@ def migrate_language_field():
             connection.execute(update_query)
             connection.commit()
 
-            print("✅ Миграция language завершена!")
+            print("✅ Language migration completed!")
             return True
 
     except (OperationalError, ProgrammingError) as e:
-        print(f"⚠️  Ошибка миграции: {e}")
-        return True  # Не критично, продолжаем
+        print(f"⚠️  Migration error: {e}")
+        return True  # Not critical, continue
     except Exception as e:
-        print(f"⚠️  Неожиданная ошибка: {e}")
-        return True  # Не критично, продолжаем
+        print(f"⚠️  Unexpected error: {e}")
+        return True  # Not critical, continue
     finally:
         engine.dispose()
 

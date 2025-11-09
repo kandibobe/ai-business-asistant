@@ -1,6 +1,6 @@
 """
-Улучшенные обработчики команд с профессиональным UI.
-Версия для Fiverr демо с расширенным функционалом.
+Enhanced command handlers with professional UI.
+Version for Fiverr demo with extended functionality.
 """
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -37,37 +37,37 @@ from handlers.export_handlers import (
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Команда /start - приветствие и главное меню"""
+    """Command /start - welcome and main menu"""
     user = update.effective_user
     db: Session = SessionLocal()
     try:
-        # Проверяем, новый ли пользователь
+        # Check if user is new
         existing_user = db.query(crud.models.User).filter(
             crud.models.User.user_id == user.id
         ).first()
         is_new = existing_user is None
 
-        # Создаем или получаем пользователя
+        # Create or get user
         db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
 
-        # Получаем язык пользователя
+        # Get user's language
         lang = db_user.language or 'ru'
 
-        # Отправляем приветственное сообщение с поддержкой i18n
+        # Send welcome message with i18n support
         if is_new:
             welcome_text = get_text('welcome_new', lang, name=user.first_name or user.username or 'там')
         else:
             welcome_text = get_text('welcome_back', lang, name=user.first_name or user.username or 'там')
 
         if update.message:
-            # Отправляем основное меню (inline keyboard)
+            # Send main menu (inline keyboard)
             await update.message.reply_html(
                 welcome_text,
                 reply_markup=get_main_menu_keyboard()
             )
-            # Отправляем постоянную клавиатуру внизу (reply keyboard)
-            quick_access_text = "⬇️ Используйте кнопки внизу для быстрого доступа" if lang == 'ru' else (
-                "⬇️ Use the buttons below for quick access" if lang == 'en' else
+            # Send persistent keyboard at bottom (reply keyboard)
+            quick_access_text = "⬇️ Use the buttons below for quick access" if lang == 'en' else (
+                "⬇️ Используйте кнопки внизу для быстрого доступа" if lang == 'ru' else
                 "⬇️ Verwenden Sie die Schaltflächen unten für schnellen Zugriff"
             )
             await update.message.reply_text(
@@ -84,15 +84,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         db.close()
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Команда /stats - показать статистику пользователя с возможностью экспорта"""
+    """Command /stats - show user statistics with export option"""
     user = update.effective_user
     db: Session = SessionLocal()
     try:
-        # Получаем статистику
+        # Get statistics
         stats = get_user_stats(db, user.id)
 
         if not stats:
-            message = "📊 Статистика недоступна. Начните использовать бота!"
+            message = "📊 Statistics unavailable. Start using the bot!"
             keyboard = get_main_menu_keyboard()
         else:
             message = format_stats_message(stats)
@@ -113,17 +113,17 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         db.close()
 
 async def my_docs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Команда /mydocs - список всех документов"""
+    """Command /mydocs - list all documents"""
     user = update.effective_user
     db: Session = SessionLocal()
     try:
         db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
         documents = crud.get_all_user_documents(db, db_user)
 
-        # Преобразуем документы в формат для отображения
+        # Convert documents to display format
         docs_list = []
         for doc in documents:
-            # Определяем тип
+            # Determine type
             file_name = doc.file_name.lower()
             if file_name.endswith('.pdf'):
                 doc_type = 'pdf'
@@ -141,18 +141,18 @@ async def my_docs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 'name': doc.file_name,
                 'type': doc_type,
                 'created_at': doc.created_at.strftime('%d.%m.%Y'),
-                'questions_count': 0,  # TODO: добавить tracking
+                'questions_count': 0,  # TODO: add tracking
                 'is_active': db_user.active_document_id == doc.id,
             })
 
-        # Форматируем список
+        # Format list
         page = context.user_data.get('docs_page', 1)
         per_page = 5
         total_pages = (len(docs_list) + per_page - 1) // per_page
 
         message = format_document_list(docs_list, page, per_page)
 
-        # Создаем клавиатуру с документами
+        # Create keyboard with documents
         keyboard_buttons = []
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page

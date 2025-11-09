@@ -198,7 +198,7 @@ async def handle_hash_algorithm(update: Update, context: ContextTypes.DEFAULT_TY
 # --- UUID Generator ---
 
 async def handle_uuid_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Генерация UUID"""
+    """Generate UUID"""
     query = update.callback_query
     await query.answer()
 
@@ -513,16 +513,16 @@ async def handle_github_user(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def handle_crypto_price_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Меню выбора криптовалюты"""
+    """Cryptocurrency selection menu"""
     query = update.callback_query
     await query.answer()
 
     message = """
 💰 <b>Crypto Prices</b>
 
-Выберите криптовалюту или введите свою:
+Select cryptocurrency or enter your own:
 
-💡 Цены обновляются в реальном времени от CoinGecko
+💡 Prices updated in real-time from CoinGecko
 """
 
     await query.edit_message_text(
@@ -533,12 +533,12 @@ async def handle_crypto_price_menu(update: Update, context: ContextTypes.DEFAULT
 
 
 async def handle_crypto_price(update: Update, context: ContextTypes.DEFAULT_TYPE, crypto: str = None) -> None:
-    """Получение цены криптовалюты"""
+    """Get cryptocurrency price"""
     query = update.callback_query
 
     if crypto:
-        # Прямой выбор из меню
-        await query.answer("Загрузка цены...")
+        # Direct selection from menu
+        await query.answer("Loading price...")
         success, result = get_crypto_price(crypto)
     else:
         # User input
@@ -686,8 +686,8 @@ async def handle_ai_chat_mode(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def handle_ai_chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gemini_model) -> str:
     """
-    Обрабатывает сообщения в AI Chat режиме.
-    Возвращает ответ AI или None если режим не активен.
+    Processes messages in AI Chat mode.
+    Returns AI response or None if mode is not active.
     """
     if not context.user_data.get('ai_chat_mode'):
         return None
@@ -703,14 +703,14 @@ async def handle_ai_chat_message(update: Update, context: ContextTypes.DEFAULT_T
         style = db_user.response_style or 'standard'
         mode = db_user.ai_mode or 'standard'
 
-        # Строим промпт для AI
+        # Build prompt for AI
         prompt = build_ai_prompt(role, style, mode, question, context=None)
 
-        # Получаем ответ от AI
+        # Get AI response
         response = gemini_model.generate_content(prompt)
         answer = response.text
 
-        # Форматируем ответ
+        # Format response
         formatted_answer = format_ai_answer(
             answer=answer,
             role=role,
@@ -722,7 +722,7 @@ async def handle_ai_chat_message(update: Update, context: ContextTypes.DEFAULT_T
         return formatted_answer
 
     except Exception as e:
-        return f"❌ Ошибка при обработке вопроса: {str(e)}"
+        return f"❌ Error processing question: {str(e)}"
     finally:
         db.close()
 
@@ -731,8 +731,8 @@ async def handle_ai_chat_message(update: Update, context: ContextTypes.DEFAULT_T
 
 async def handle_developer_tool_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """
-    Обрабатывает текстовый ввод для инструментов разработчика.
-    Возвращает True если ввод был обработан, False если нет.
+    Processes text input for developer tools.
+    Returns True if input was processed, False if not.
     """
     awaiting = context.user_data.get('awaiting_input')
     if not awaiting:
@@ -772,7 +772,7 @@ async def handle_developer_tool_input(update: Update, context: ContextTypes.DEFA
                 pattern, flags, test_text = parts[0].strip(), parts[1].strip(), parts[2].strip()
                 success, result_text = parse_regex(pattern, test_text, flags)
             else:
-                success, result_text = False, "❌ Формат: pattern | text или pattern | flags | text"
+                success, result_text = False, "❌ Format: pattern | text or pattern | flags | text"
 
         # Cron
         elif awaiting == 'tool_cron':
@@ -816,7 +816,7 @@ async def handle_developer_tool_input(update: Update, context: ContextTypes.DEFA
                 length = int(text)
                 result_text = generate_password(length, include_special=True)
             except:
-                success, result_text = False, "❌ Введите число (длина пароля)"
+                success, result_text = False, "❌ Enter a number (password length)"
         elif awaiting == 'gen_qr':
             success, result_text = generate_qr_code(text)
         elif awaiting == 'gen_short_url':
@@ -825,10 +825,10 @@ async def handle_developer_tool_input(update: Update, context: ContextTypes.DEFA
         else:
             return False
 
-        # Очищаем состояние
+        # Clear state
         context.user_data.pop('awaiting_input', None)
 
-        # Отправляем результат
+        # Send result
         keyboard = [[InlineKeyboardButton("🛠️ Developer Tools", callback_data='developer_tools')]]
 
         await update.message.reply_html(
@@ -841,7 +841,7 @@ async def handle_developer_tool_input(update: Update, context: ContextTypes.DEFA
     except Exception as e:
         context.user_data.pop('awaiting_input', None)
         await update.message.reply_text(
-            f"❌ Ошибка обработки: {str(e)}",
+            f"❌ Processing error: {str(e)}",
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton("🛠️ Developer Tools", callback_data='developer_tools')
             ]])
