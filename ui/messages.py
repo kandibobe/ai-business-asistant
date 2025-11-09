@@ -1,74 +1,74 @@
 """
-Красиво оформленные сообщения для Telegram бота.
-Профессиональный дизайн для Fiverr демо.
+Beautifully formatted messages for Telegram bot.
+Professional design for Fiverr demo.
 """
 from typing import List, Dict, Any
 from datetime import datetime
 
 def format_welcome_message(user_name: str, is_new: bool = True) -> str:
-    """Приветственное сообщение"""
+    """Welcome message"""
     if is_new:
         return f"""
-🎉 <b>Добро пожаловать, {user_name}!</b>
+🎉 <b>Welcome, {user_name}!</b>
 
-Я - <b>AI Business Intelligence Agent</b> 🤖
-Ваш персональный помощник для анализа документов и данных.
+I am <b>AI Business Intelligence Agent</b> 🤖
+Your personal assistant for document and data analysis.
 
-<b>Что я умею:</b>
-📄 Анализировать PDF, Excel, Word документы
-🎤 Транскрибировать аудио и голосовые сообщения
-🌐 Парсить и анализировать веб-страницы
-💬 Отвечать на вопросы по вашим документам
-📊 Создавать визуализации и отчеты
+<b>What I can do:</b>
+📄 Analyze PDF, Excel, Word documents
+🎤 Transcribe audio and voice messages
+🌐 Parse and analyze web pages
+💬 Answer questions about your documents
+📊 Create visualizations and reports
 
-<b>Быстрый старт:</b>
-1️⃣ Загрузите документ или отправьте URL
-2️⃣ Дождитесь завершения анализа
-3️⃣ Задавайте вопросы по содержимому
+<b>Quick start:</b>
+1️⃣ Upload document or send URL
+2️⃣ Wait for analysis completion
+3️⃣ Ask questions about content
 
-💡 <i>Подсказка: используйте /help для подробной информации</i>
+💡 <i>Tip: use /help for detailed information</i>
 """
     else:
         return f"""
-👋 <b>С возвращением, {user_name}!</b>
+👋 <b>Welcome back, {user_name}!</b>
 
-Готов продолжить работу с вашими документами! 📚
+Ready to continue working with your documents! 📚
 
-Используйте меню ниже для быстрого доступа к функциям.
+Use menu below for quick access to features.
 """
 
 def format_stats_message(stats: Dict[str, Any]) -> str:
-    """Статистика пользователя"""
+    """User statistics"""
     return f"""
-📊 <b>Ваша статистика</b>
+📊 <b>Your Statistics</b>
 
-<b>Документы:</b>
-📄 Всего документов: {stats.get('total_docs', 0)}
-📌 Активный документ: {stats.get('active_doc', 'Нет')}
-📈 Обработано за месяц: {stats.get('docs_this_month', 0)}
+<b>Documents:</b>
+📄 Total documents: {stats.get('total_docs', 0)}
+📌 Active document: {stats.get('active_doc', 'None')}
+📈 Processed this month: {stats.get('docs_this_month', 0)}
 
-<b>Использование AI:</b>
-💬 Задано вопросов: {stats.get('questions_asked', 0)}
-⏱️ Среднее время ответа: {stats.get('avg_response_time', 'N/A')} сек
-🎯 Точность ответов: {stats.get('accuracy', 95)}%
+<b>AI Usage:</b>
+💬 Questions asked: {stats.get('questions_asked', 0)}
+⏱️ Average response time: {stats.get('avg_response_time', 'N/A')} sec
+🎯 Answer accuracy: {stats.get('accuracy', 95)}%
 
-<b>Тип документов:</b>
+<b>Document types:</b>
 📄 PDF: {stats.get('pdf_count', 0)}
 📊 Excel: {stats.get('excel_count', 0)}
 📝 Word: {stats.get('word_count', 0)}
 🌐 URL: {stats.get('url_count', 0)}
-🎤 Аудио: {stats.get('audio_count', 0)}
+🎤 Audio: {stats.get('audio_count', 0)}
 
-<b>Активность:</b>
-📅 Первый визит: {stats.get('first_visit', 'N/A')}
-🕒 Последняя активность: {stats.get('last_activity', 'N/A')}
-🔥 Streak: {stats.get('streak_days', 0)} дней подряд!
+<b>Activity:</b>
+📅 First visit: {stats.get('first_visit', 'N/A')}
+🕒 Last activity: {stats.get('last_activity', 'N/A')}
+🔥 Streak: {stats.get('streak_days', 0)} days in a row!
 
-{"💎 <b>Premium статус: Активен</b>" if stats.get('is_premium') else "✨ <i>Получите Premium для расширенных функций!</i>"}
+{"💎 <b>Premium status: Active</b>" if stats.get('is_premium') else "✨ <i>Get Premium for extended features!</i>"}
 """
 
 def format_document_info(doc: Dict[str, Any]) -> str:
-    """Информация о документе"""
+    """Document information"""
     doc_type_icons = {
         'pdf': '📄',
         'excel': '📊',
@@ -82,36 +82,36 @@ def format_document_info(doc: Dict[str, Any]) -> str:
     size_str = f"{size / 1024:.1f} KB" if size < 1024*1024 else f"{size / (1024*1024):.1f} MB"
 
     return f"""
-{icon} <b>{doc.get('name', 'Без названия')}</b>
+{icon} <b>{doc.get('name', 'Untitled')}</b>
 
-<b>Информация:</b>
-📝 Тип: {doc.get('type', 'Unknown')}
-📏 Размер: {size_str}
-📊 Символов: {doc.get('char_count', 0):,}
-📅 Загружен: {doc.get('created_at', 'N/A')}
+<b>Information:</b>
+📝 Type: {doc.get('type', 'Unknown')}
+📏 Size: {size_str}
+📊 Characters: {doc.get('char_count', 0):,}
+📅 Uploaded: {doc.get('created_at', 'N/A')}
 
-<b>Анализ:</b>
-✅ Статус: {"Обработан" if doc.get('processed') else "В обработке..."}
-💬 Вопросов задано: {doc.get('questions_count', 0)}
-⭐ Рейтинг: {'⭐' * doc.get('rating', 0)}
+<b>Analysis:</b>
+✅ Status: {"Processed" if doc.get('processed') else "Processing..."}
+💬 Questions asked: {doc.get('questions_count', 0)}
+⭐ Rating: {'⭐' * doc.get('rating', 0)}
 
-{doc.get('summary', '<i>Краткое содержание пока недоступно</i>')}
+{doc.get('summary', '<i>Summary not yet available</i>')}
 """
 
 def format_document_list(documents: List[Dict[str, Any]], page: int = 1, per_page: int = 5) -> str:
-    """Список документов"""
+    """Document list"""
     if not documents:
         return """
-📭 <b>У вас пока нет документов</b>
+📭 <b>You have no documents yet</b>
 
-Загрузите ваш первый документ:
-• 📄 PDF файл
-• 📊 Excel таблицу
-• 📝 Word документ
-• 🌐 URL веб-страницы
-• 🎤 Аудио запись
+Upload your first document:
+• 📄 PDF file
+• 📊 Excel spreadsheet
+• 📝 Word document
+• 🌐 Web page URL
+• 🎤 Audio recording
 
-Или используйте команду /help для подробной информации.
+Or use /help command for detailed information.
 """
 
     total = len(documents)
@@ -119,69 +119,69 @@ def format_document_list(documents: List[Dict[str, Any]], page: int = 1, per_pag
     end = start + per_page
     page_docs = documents[start:end]
 
-    result = f"📚 <b>Ваши документы</b> (Всего: {total})\n\n"
+    result = f"📚 <b>Your Documents</b> (Total: {total})\n\n"
 
     for idx, doc in enumerate(page_docs, start=start+1):
         icon = {'pdf': '📄', 'excel': '📊', 'word': '📝', 'url': '🌐', 'audio': '🎤'}.get(
             doc.get('type', '').lower(), '📎'
         )
         active = " ✅" if doc.get('is_active') else ""
-        result += f"{idx}. {icon} <b>{doc.get('name', 'Без названия')}</b>{active}\n"
-        result += f"   📅 {doc.get('created_at', 'N/A')} | 💬 {doc.get('questions_count', 0)} вопросов\n\n"
+        result += f"{idx}. {icon} <b>{doc.get('name', 'Untitled')}</b>{active}\n"
+        result += f"   📅 {doc.get('created_at', 'N/A')} | 💬 {doc.get('questions_count', 0)} questions\n\n"
 
     if total > per_page:
-        result += f"\n📄 Страница {page} из {(total + per_page - 1) // per_page}"
+        result += f"\n📄 Page {page} of {(total + per_page - 1) // per_page}"
 
     return result
 
 def format_help_message() -> str:
-    """Справка"""
+    """Help guide"""
     return """
-❓ <b>Справка по использованию</b>
+❓ <b>Usage Guide</b>
 
-<b>📄 Работа с документами</b>
+<b>📄 Working with Documents</b>
 
-<b>Загрузка:</b>
-• Отправьте PDF, Excel или Word файл
-• Отправьте URL веб-страницы
-• Отправьте голосовое сообщение или аудио файл
+<b>Upload:</b>
+• Send PDF, Excel or Word file
+• Send web page URL
+• Send voice message or audio file
 
-<b>Анализ:</b>
-• Бот автоматически обработает документ
-• Извлечет текст и структуру данных
-• Сделает документ активным для вопросов
+<b>Analysis:</b>
+• Bot automatically processes document
+• Extracts text and data structure
+• Makes document active for questions
 
-<b>💬 Вопросы по документам</b>
+<b>💬 Document Questions</b>
 
-Просто напишите свой вопрос, например:
-• "Какие основные выводы?"
-• "Сколько всего записей?"
-• "Суммируй содержание"
-• "Найди информацию о..."
+Simply write your question, for example:
+• "What are the main conclusions?"
+• "How many total records?"
+• "Summarize content"
+• "Find information about..."
 
-<b>📊 Дополнительные функции</b>
+<b>📊 Additional Features</b>
 
-/start - Начать работу
-/mydocs - Список всех документов
-/clear - Удалить все документы
-/stats - Статистика использования
-/settings - Настройки бота
-/help - Эта справка
+/start - Start working
+/mydocs - List all documents
+/clear - Delete all documents
+/stats - Usage statistics
+/settings - Bot settings
+/help - This help
 
-<b>💎 Premium возможности</b>
+<b>💎 Premium Features</b>
 
-• 📈 Визуализация данных из Excel
-• 📥 Экспорт результатов (PDF/Excel/Word)
-• 🔍 Расширенный анализ документов
-• ⚡ Приоритетная обработка
-• 📊 Детальная аналитика
+• 📈 Data visualization from Excel
+• 📥 Export results (PDF/Excel/Word)
+• 🔍 Extended document analysis
+• ⚡ Priority processing
+• 📊 Detailed analytics
 
-<b>🆘 Нужна помощь?</b>
-Напишите нам: support@example.com
+<b>🆘 Need help?</b>
+Contact us: support@example.com
 """
 
 def format_processing_message(file_name: str, file_type: str) -> str:
-    """Сообщение об обработке"""
+    """Processing message"""
     icons = {
         'pdf': '📄',
         'excel': '📊',
@@ -192,120 +192,120 @@ def format_processing_message(file_name: str, file_type: str) -> str:
     icon = icons.get(file_type.lower(), '📎')
 
     return f"""
-{icon} <b>Обработка документа...</b>
+{icon} <b>Processing document...</b>
 
-📝 Файл: {file_name}
-⏳ Статус: Анализируется...
+📝 File: {file_name}
+⏳ Status: Analyzing...
 
-Это может занять некоторое время в зависимости от размера документа.
-Вы получите уведомление после завершения обработки.
+This may take some time depending on document size.
+You will receive notification after processing completion.
 
-💡 <i>Вы можете продолжать работу с другими документами</i>
+💡 <i>You can continue working with other documents</i>
 """
 
 def format_success_message(file_name: str, stats: Dict[str, Any]) -> str:
-    """Сообщение об успешной обработке"""
+    """Successful processing message"""
     return f"""
-✅ <b>Документ успешно обработан!</b>
+✅ <b>Document processed successfully!</b>
 
 📝 {file_name}
-📊 Извлечено символов: {stats.get('char_count', 0):,}
-⏱️ Время обработки: {stats.get('processing_time', 'N/A')} сек
+📊 Characters extracted: {stats.get('char_count', 0):,}
+⏱️ Processing time: {stats.get('processing_time', 'N/A')} sec
 
-Документ назначен активным для диалога.
-Теперь вы можете задавать по нему вопросы! 💬
+Document set as active for dialogue.
+Now you can ask questions about it! 💬
 
-<b>Что дальше?</b>
-• Задайте вопрос по содержимому
-• Получите краткое содержание
-• Извлеките ключевые данные
-• Создайте отчет или визуализацию
+<b>What's next?</b>
+• Ask question about content
+• Get summary
+• Extract key data
+• Create report or visualization
 """
 
 def format_error_message(error_type: str, details: str = "") -> str:
-    """Сообщение об ошибке"""
+    """Error message"""
     messages = {
-        'file_too_large': '📦 Файл слишком большой. Максимальный размер: 50 MB.',
-        'unsupported_format': '❌ Неподдерживаемый формат файла.',
-        'processing_error': '⚠️ Ошибка при обработке документа.',
-        'database_error': '🗄️ Ошибка базы данных. Попробуйте позже.',
-        'api_error': '🔌 Ошибка подключения к AI сервису.',
-        'no_active_document': '📭 Нет активного документа. Загрузите документ сначала.',
-        'network_error': '🌐 Ошибка сети. Проверьте подключение.',
+        'file_too_large': '📦 File too large. Maximum size: 50 MB.',
+        'unsupported_format': '❌ Unsupported file format.',
+        'processing_error': '⚠️ Error processing document.',
+        'database_error': '🗄️ Database error. Try again later.',
+        'api_error': '🔌 Error connecting to AI service.',
+        'no_active_document': '📭 No active document. Upload document first.',
+        'network_error': '🌐 Network error. Check connection.',
     }
 
-    message = messages.get(error_type, '❌ Произошла неизвестная ошибка.')
+    message = messages.get(error_type, '❌ Unknown error occurred.')
 
     if details:
-        message += f"\n\n<i>Детали: {details}</i>"
+        message += f"\n\n<i>Details: {details}</i>"
 
-    message += "\n\n💡 <i>Попробуйте еще раз или обратитесь в поддержку</i>"
+    message += "\n\n💡 <i>Try again or contact support</i>"
 
     return message
 
 def format_premium_promo() -> str:
-    """Промо Premium подписки"""
+    """Premium subscription promo"""
     return """
 ✨ <b>Upgrade to Premium!</b>
 
-<b>Получите больше возможностей:</b>
+<b>Get more features:</b>
 
-📈 <b>Расширенная аналитика</b>
-   • Визуализация данных
-   • Автоматические графики и диаграммы
-   • Экспорт в любых форматах
+📈 <b>Extended Analytics</b>
+   • Data visualization
+   • Automatic charts and diagrams
+   • Export in any format
 
-🚀 <b>Приоритетная обработка</b>
-   • Быстрее в 3 раза
-   • Без очереди
+🚀 <b>Priority Processing</b>
+   • 3x faster
+   • No queue
 
-💎 <b>Больше лимитов</b>
-   • До 100 документов (вместо 10)
-   • До 50 MB файлы (вместо 10 MB)
-   • Неограниченные вопросы
+💎 <b>Higher Limits</b>
+   • Up to 100 documents (vs 10)
+   • Up to 50 MB files (vs 10 MB)
+   • Unlimited questions
 
-🎯 <b>Расширенный AI</b>
-   • Более точные ответы
-   • Глубокий анализ
-   • Мультидокументный поиск
+🎯 <b>Advanced AI</b>
+   • More accurate answers
+   • Deep analysis
+   • Multi-document search
 
-<b>💰 Цены:</b>
-📅 Месяц: $9.99
-📅 Год: $89.99 (-25%)
-🎁 Пробный период: 7 дней бесплатно
+<b>💰 Pricing:</b>
+📅 Monthly: $9.99
+📅 Yearly: $89.99 (-25%)
+🎁 Trial period: 7 days free
 
-<i>Нажмите "Купить Premium" чтобы начать!</i>
+<i>Click "Buy Premium" to start!</i>
 """
 
 def format_comparison_table() -> str:
-    """Сравнительная таблица тарифов"""
+    """Pricing comparison table"""
     return """
-📋 <b>Сравнение тарифов</b>
+📋 <b>Plan Comparison</b>
 
 <b>FREE</b>
-• 10 документов
-• 10 MB max размер
-• Базовый AI
-• Стандартная скорость
-• Нет экспорта
+• 10 documents
+• 10 MB max size
+• Basic AI
+• Standard speed
+• No export
 
 <b>PREMIUM</b> 💎
-• 100 документов
-• 50 MB max размер
-• Продвинутый AI
-• Приоритетная обработка
-• Экспорт в PDF/Excel/Word
-• Визуализация данных
-• Email поддержка 24/7
+• 100 documents
+• 50 MB max size
+• Advanced AI
+• Priority processing
+• Export to PDF/Excel/Word
+• Data visualization
+• 24/7 email support
 
 <b>ENTERPRISE</b> 🏢
-• Неограниченно документов
-• 500 MB max размер
-• Кастомные AI модели
-• Мгновенная обработка
-• API доступ
-• Кастомная интеграция
-• Персональный менеджер
+• Unlimited documents
+• 500 MB max size
+• Custom AI models
+• Instant processing
+• API access
+• Custom integration
+• Personal manager
 
-Свяжитесь с нами для Enterprise тарифа!
+Contact us for Enterprise plan!
 """
