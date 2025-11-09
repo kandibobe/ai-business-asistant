@@ -214,7 +214,7 @@ async def handle_uuid_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 # --- Regex Tool ---
 
 async def handle_regex_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Regex тестер"""
+    """Regex tester"""
     query = update.callback_query
     await query.answer()
 
@@ -223,21 +223,21 @@ async def handle_regex_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     message = """
 🔍 <b>Regex Tester</b>
 
-📤 Отправьте данные в формате:
+📤 Send data in format:
 
 <code>pattern | text</code>
 
-<i>Пример:</i>
+<i>Example:</i>
 <code>\\d+ | My age is 25 years</code>
 
-<i>С флагами:</i>
+<i>With flags:</i>
 <code>hello | i | Hello World</code>
-(флаги: i - ignorecase, m - multiline, s - dotall)
+(flags: i - ignorecase, m - multiline, s - dotall)
 
-⏳ Ожидаю pattern и text...
+⏳ Awaiting pattern and text...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_utilities')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_utilities')]]
 
     await query.edit_message_text(
         text=message,
@@ -249,7 +249,7 @@ async def handle_regex_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 # --- Cron Parser ---
 
 async def handle_cron_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Cron парсер"""
+    """Cron parser"""
     query = update.callback_query
     await query.answer()
 
@@ -258,18 +258,18 @@ async def handle_cron_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     message = """
 🕐 <b>Cron Parser</b>
 
-📤 Отправьте cron выражение (5 частей)
+📤 Send cron expression (5 parts)
 
-<i>Примеры:</i>
-<code>* * * * *</code> - каждую минуту
-<code>0 * * * *</code> - каждый час
-<code>0 0 * * *</code> - каждый день
-<code>0 0 * * 0</code> - каждое воскресенье
+<i>Examples:</i>
+<code>* * * * *</code> - every minute
+<code>0 * * * *</code> - every hour
+<code>0 0 * * *</code> - every day
+<code>0 0 * * 0</code> - every Sunday
 
-⏳ Ожидаю cron expression...
+⏳ Awaiting cron expression...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_utilities')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_utilities')]]
 
     await query.edit_message_text(
         text=message,
@@ -281,29 +281,29 @@ async def handle_cron_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 # --- Calculator ---
 
 async def handle_calc_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Калькулятор"""
+    """Calculator"""
     query = update.callback_query
     await query.answer()
 
     context.user_data['awaiting_input'] = 'tool_calc'
 
     message = """
-🔢 <b>Калькулятор</b>
+🔢 <b>Calculator</b>
 
-📤 Отправьте математическое выражение
+📤 Send mathematical expression
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>2 + 2</code>
 <code>100 * 50 / 2</code>
 <code>(10 + 5) * 3</code>
 
-💡 Поддерживаются: +, -, *, /, (), %
-📊 Результат будет показан в разных форматах (DEC, HEX, BIN)
+💡 Supported: +, -, *, /, (), %
+📊 Result will be shown in different formats (DEC, HEX, BIN)
 
-⏳ Ожидаю выражение...
+⏳ Awaiting expression...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_utilities')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_utilities')]]
 
     await query.edit_message_text(
         text=message,
@@ -315,7 +315,7 @@ async def handle_calc_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 # --- Color Converter ---
 
 async def handle_color_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Конвертер цветов"""
+    """Color converter"""
     query = update.callback_query
     await query.answer()
 
@@ -324,17 +324,17 @@ async def handle_color_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     message = """
 🎨 <b>Color Converter</b>
 
-📤 Отправьте цвет в формате HEX или RGB
+📤 Send color in HEX or RGB format
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>#FF5733</code>
 <code>#00ff00</code>
 <code>rgb(255, 87, 51)</code>
 
-⏳ Ожидаю цвет...
+⏳ Awaiting color...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_utilities')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_utilities')]]
 
     await query.edit_message_text(
         text=message,
@@ -346,23 +346,23 @@ async def handle_color_tool(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 # --- Formatters Menu ---
 
 async def handle_formatters_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Меню форматтеров"""
+    """Formatters menu"""
     query = update.callback_query
     await query.answer()
 
     message = """
-💻 <b>Форматтеры кода и данных</b>
+💻 <b>Code and Data Formatters</b>
 
-Доступные инструменты:
+Available tools:
 
-📄 <b>JSON Format</b> - красивое форматирование
-🗜️ <b>JSON Minify</b> - сжатие JSON
-🗄️ <b>SQL Format</b> - форматирование SQL
-🔗 <b>URL Encode</b> - кодирование URL
-🔓 <b>URL Decode</b> - декодирование URL
-📅 <b>Timestamp</b> - конвертация Unix timestamp
+📄 <b>JSON Format</b> - beautiful formatting
+🗜️ <b>JSON Minify</b> - JSON compression
+🗄️ <b>SQL Format</b> - SQL formatting
+🔗 <b>URL Encode</b> - URL encoding
+🔓 <b>URL Decode</b> - URL decoding
+📅 <b>Timestamp</b> - Unix timestamp conversion
 
-💡 Отправьте данные после выбора инструмента
+💡 Send data after selecting a tool
 """
 
     await query.edit_message_text(
@@ -375,23 +375,23 @@ async def handle_formatters_menu(update: Update, context: ContextTypes.DEFAULT_T
 # --- Generators Menu ---
 
 async def handle_generators_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Меню генераторов"""
+    """Generators menu"""
     query = update.callback_query
     await query.answer()
 
     message = """
-🔐 <b>Генераторы</b>
+🔐 <b>Generators</b>
 
-Доступные инструменты:
+Available tools:
 
-🆔 <b>UUID</b> - генерация UUID v4
-🔐 <b>Password</b> - безопасные пароли
-🔣 <b>Hash MD5</b> - MD5 хеши
-🔐 <b>Hash SHA256</b> - SHA256 хеши
-📱 <b>QR Code</b> - создание QR кодов
-✂️ <b>Short URL</b> - сокращение ссылок
+🆔 <b>UUID</b> - UUID v4 generation
+🔐 <b>Password</b> - secure passwords
+🔣 <b>Hash MD5</b> - MD5 hashes
+🔐 <b>Hash SHA256</b> - SHA256 hashes
+📱 <b>QR Code</b> - QR code creation
+✂️ <b>Short URL</b> - URL shortening
 
-💡 Некоторые инструменты требуют ввода данных
+💡 Some tools require data input
 """
 
     await query.edit_message_text(
@@ -421,7 +421,7 @@ async def handle_integrations_menu(update: Update, context: ContextTypes.DEFAULT
 # --- API Handlers ---
 
 async def handle_github_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Поиск на GitHub"""
+    """GitHub search"""
     query = update.callback_query
     await query.answer()
 
@@ -430,19 +430,19 @@ async def handle_github_search(update: Update, context: ContextTypes.DEFAULT_TYP
     message = """
 🐙 <b>GitHub Repository Search</b>
 
-📤 Отправьте поисковый запрос
+📤 Send search query
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>react</code>
 <code>machine learning python</code>
 <code>telegram bot</code>
 
-💡 Будут показаны топ-5 репозиториев по звездам
+💡 Top 5 repositories by stars will be shown
 
-⏳ Ожидаю запрос...
+⏳ Awaiting query...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_integrations')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_integrations')]]
 
     await query.edit_message_text(
         text=message,
@@ -452,7 +452,7 @@ async def handle_github_search(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def handle_npm_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Поиск NPM пакетов"""
+    """NPM package search"""
     query = update.callback_query
     await query.answer()
 
@@ -461,19 +461,19 @@ async def handle_npm_search(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     message = """
 📦 <b>NPM Package Info</b>
 
-📤 Отправьте название пакета
+📤 Send package name
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>react</code>
 <code>express</code>
 <code>axios</code>
 
-💡 Будет показана информация о последней версии
+💡 Latest version info will be shown
 
-⏳ Ожидаю название пакета...
+⏳ Awaiting package name...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_integrations')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_integrations')]]
 
     await query.edit_message_text(
         text=message,
@@ -483,7 +483,7 @@ async def handle_npm_search(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 async def handle_github_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Информация о пользователе GitHub"""
+    """GitHub user info"""
     query = update.callback_query
     await query.answer()
 
@@ -492,18 +492,18 @@ async def handle_github_user(update: Update, context: ContextTypes.DEFAULT_TYPE)
     message = """
 👤 <b>GitHub User Info</b>
 
-📤 Отправьте username
+📤 Send username
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>torvalds</code>
 <code>gvanrossum</code>
 
-💡 Будет показана полная информация о пользователе
+💡 Full user information will be shown
 
-⏳ Ожидаю username...
+⏳ Awaiting username...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_integrations')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_integrations')]]
 
     await query.edit_message_text(
         text=message,
@@ -541,26 +541,26 @@ async def handle_crypto_price(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.answer("Загрузка цены...")
         success, result = get_crypto_price(crypto)
     else:
-        # Пользовательский ввод
+        # User input
         await query.answer()
         context.user_data['awaiting_input'] = 'api_crypto'
 
         message = """
 💰 <b>Custom Crypto</b>
 
-📤 Отправьте название криптовалюты
+📤 Send cryptocurrency name
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>dogecoin</code>
 <code>ripple</code>
 <code>litecoin</code>
 
-💡 Используйте ID из CoinGecko
+💡 Use ID from CoinGecko
 
-⏳ Ожидаю название...
+⏳ Awaiting name...
 """
 
-        keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='api_crypto')]]
+        keyboard = [[InlineKeyboardButton("⬅️ Back", callback_data='api_crypto')]]
 
         await query.edit_message_text(
             text=message,
@@ -570,8 +570,8 @@ async def handle_crypto_price(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Обновить", callback_data=f'crypto_{crypto}')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='api_crypto')],
+        [InlineKeyboardButton("🔄 Refresh", callback_data=f'crypto_{crypto}')],
+        [InlineKeyboardButton("⬅️ Back", callback_data='api_crypto')],
     ]
 
     await query.edit_message_text(
@@ -582,7 +582,7 @@ async def handle_crypto_price(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def handle_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Погода"""
+    """Weather"""
     query = update.callback_query
     await query.answer()
 
@@ -591,17 +591,17 @@ async def handle_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     message = """
 🌤️ <b>Weather</b>
 
-📤 Отправьте название города
+📤 Send city name
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>Moscow</code>
 <code>London</code>
 <code>New York</code>
 
-⏳ Ожидаю город...
+⏳ Awaiting city...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_integrations')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_integrations')]]
 
     await query.edit_message_text(
         text=message,
@@ -611,15 +611,15 @@ async def handle_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def handle_quote(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Случайная цитата"""
+    """Random quote"""
     query = update.callback_query
-    await query.answer("Загрузка цитаты...")
+    await query.answer("Loading quote...")
 
     success, result = get_random_quote()
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Еще одна", callback_data='api_quote')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='dev_integrations')],
+        [InlineKeyboardButton("🔄 Another one", callback_data='api_quote')],
+        [InlineKeyboardButton("⬅️ Back", callback_data='dev_integrations')],
     ]
 
     await query.edit_message_text(
@@ -630,15 +630,15 @@ async def handle_quote(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def handle_joke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Случайная шутка"""
+    """Random joke"""
     query = update.callback_query
-    await query.answer("Загрузка шутки...")
+    await query.answer("Loading joke...")
 
     success, result = get_random_joke()
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Еще одна", callback_data='api_joke')],
-        [InlineKeyboardButton("⬅️ Назад", callback_data='dev_integrations')],
+        [InlineKeyboardButton("🔄 Another one", callback_data='api_joke')],
+        [InlineKeyboardButton("⬅️ Back", callback_data='dev_integrations')],
     ]
 
     await query.edit_message_text(
@@ -852,7 +852,7 @@ async def handle_developer_tool_input(update: Update, context: ContextTypes.DEFA
 # --- Password Generator ---
 
 async def handle_password_gen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Генератор паролей"""
+    """Password generator"""
     query = update.callback_query
     await query.answer()
 
@@ -861,19 +861,19 @@ async def handle_password_gen(update: Update, context: ContextTypes.DEFAULT_TYPE
     message = """
 🔐 <b>Password Generator</b>
 
-📤 Отправьте длину пароля (число)
+📤 Send password length (number)
 
-<i>Рекомендации:</i>
-• Минимум 12 символов
-• Оптимально 16-20 символов
-• Максимум 64 символа
+<i>Recommendations:</i>
+• Minimum 12 characters
+• Optimal 16-20 characters
+• Maximum 64 characters
 
-💡 Пароль будет содержать буквы, цифры и спецсимволы
+💡 Password will contain letters, numbers and special characters
 
-⏳ Ожидаю длину...
+⏳ Awaiting length...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_generators')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_generators')]]
 
     await query.edit_message_text(
         text=message,
@@ -883,7 +883,7 @@ async def handle_password_gen(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def handle_qr_gen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """QR Code генератор"""
+    """QR Code generator"""
     query = update.callback_query
     await query.answer()
 
@@ -892,19 +892,19 @@ async def handle_qr_gen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     message = """
 📱 <b>QR Code Generator</b>
 
-📤 Отправьте текст или URL для QR кода
+📤 Send text or URL for QR code
 
-<i>Примеры:</i>
+<i>Examples:</i>
 <code>https://github.com</code>
 <code>Hello World</code>
 <code>+1234567890</code>
 
-💡 QR код будет доступен по ссылке
+💡 QR code will be available via link
 
-⏳ Ожидаю текст...
+⏳ Awaiting text...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_generators')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_generators')]]
 
     await query.edit_message_text(
         text=message,
@@ -923,17 +923,17 @@ async def handle_short_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     message = """
 ✂️ <b>URL Shortener</b>
 
-📤 Отправьте длинный URL
+📤 Send long URL
 
-<i>Пример:</i>
+<i>Example:</i>
 <code>https://github.com/user/very-long-repository-name</code>
 
-💡 Будет создана короткая ссылка is.gd
+💡 Short link via is.gd will be created
 
-⏳ Ожидаю URL...
+⏳ Awaiting URL...
 """
 
-    keyboard = [[InlineKeyboardButton("❌ Отмена", callback_data='dev_generators')]]
+    keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data='dev_generators')]]
 
     await query.edit_message_text(
         text=message,
