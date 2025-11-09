@@ -9,40 +9,40 @@ from urllib.parse import urlparse
 
 from database.database import SessionLocal
 from database import crud
-from handlers.common import get_main_menu_keyboard
+from ui import get_main_menu_keyboard
 from tasks import scrape_url_task
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gemini_model: genai.GenerativeModel):
     user = update.effective_user
     question = update.message.text
 
-    # === ПРИОРИТЕТ 1: Developer Tools Input ===
-    # Проверяем, ожидается ли ввод для инструментов разработчика
+    # === PRIORITY 1: Developer Tools Input ===
+    # Check if input is expected for developer tools
     from handlers.developer_handlers import handle_developer_tool_input
     if await handle_developer_tool_input(update, context):
-        return  # Ввод обработан, выходим
+        return  # Input processed, exit
 
-    # === ПРИОРИТЕТ 2: AI Chat Mode (without documents) ===
-    # Проверяем, активен ли режим AI Chat без документов
+    # === PRIORITY 2: AI Chat Mode (without documents) ===
+    # Check if AI Chat mode without documents is active
     from handlers.developer_handlers import handle_ai_chat_message
     ai_response = await handle_ai_chat_message(update, context, gemini_model)
     if ai_response:
-        # Режим AI Chat активен, отправляем ответ
+        # AI Chat mode is active, send response
         await update.message.reply_html(ai_response)
         return
 
-    # === ПРИОРИТЕТ 3: URL Detection ===
-    # Проверяем, содержит ли сообщение URL
+    # === PRIORITY 3: URL Detection ===
+    # Check if message contains URL
     url_pattern = r'https?://(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&/=]*)'
     urls = re.findall(url_pattern, question)
 
     if urls:
-        # Если найден URL, запускаем скрапинг
-        url = urls[0]  # Берем первый найденный URL
+        # If URL found, start scraping
+        url = urls[0]  # Take the first URL found
         await update.message.reply_text(
-            f"🌐 Обнаружен URL!\n\n"
-            f"Начинаю анализ веб-страницы: {url}\n"
-            f"Это может занять некоторое время... Уведомлю о готовности."
+            f"🌐 URL detected!\n\n"
+            f"Starting web page analysis: {url}\n"
+            f"This may take some time... Will notify when ready."
         )
 
         scrape_url_task.delay(
@@ -55,40 +55,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
         )
         return
 
-    # === ПРИОРИТЕТ 4: Document Q&A ===
+    # === PRIORITY 4: Document Q&A ===
     db: Session = SessionLocal()
     try:
         db_user = crud.get_or_create_user(db, user.id, user.username, user.first_name, user.last_name)
 
-        # --- КЛЮЧЕВОЕ ИЗМЕНЕНИЕ ---
-        # active_document = crud.get_latest_document_for_user(db, db_user) # СТАРАЯ ЛОГИКА
-        active_document = crud.get_active_document_for_user(db, db_user) # НОВАЯ ЛОГИКА
+        # Get active document (not latest)
+        active_document = crud.get_active_document_for_user(db, db_user)
 
         if not active_document:
             await update.message.reply_text(
-                "У вас не выбран активный документ. Выберите его из списка /mydocs или загрузите новый.\n\n"
-                "💡 Или используйте <b>🤖 AI Chat</b> для общения без документов!",
+                "You don't have an active document selected.\n\n"
+                "💡 Or use <b>🤖 AI Chat</b> to chat without documents!",
                 reply_markup=get_main_menu_keyboard(),
                 parse_mode='HTML'
             )
             return
 
         document_text = active_document.extracted_text
-        thinking_message = await update.message.reply_text("🧠 Думаю над вашим вопросом...")
+        thinking_message = await update.message.reply_text("🧠 Thinking about your question...")
 
         prompt = f"""
-        Ты — эксперт по бизнес-аналитике. Проанализируй предоставленный ниже текст документа и ответь на вопрос пользователя.
-        Твой ответ должен быть четким, по существу и основываться ИСКЛЮЧИТЕЛЬНО на информации из документа.
-        Не придумывай ничего, чего нет в тексте.
+        You are a business analytics expert. Analyze the document text provided below and answer the user's question.
+        Your answer should be clear, concise and based EXCLUSIVELY on the information from the document.
+        Do not make up anything that is not in the text.
 
-        --- ТЕКСТ ДОКУМЕНТА ---
+        --- DOCUMENT TEXT ---
         {document_text}
-        --- КОНЕЦ ТЕКСТА ДОКУМЕНТА ---
+        --- END OF DOCUMENT TEXT ---
 
-        ВОПРОС ПОЛЬЗОВАТЕЛЯ:
+        USER'S QUESTION:
         "{question}"
         """
-        
+
         try:
             response = gemini_model.generate_content(prompt)
             await context.bot.edit_message_text(
@@ -98,7 +97,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
             )
         except Exception as e:
             await context.bot.edit_message_text(
-                text=f"❌ Произошла ошибка при обращении к AI. Попробуйте еще раз.\nДетали: {e}",
+                text=f"❌ An error occurred while contacting AI. Please try again.\nDetails: {e}",
                 chat_id=thinking_message.chat_id,
                 message_id=thinking_message.message_id
             )

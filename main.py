@@ -25,91 +25,91 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Глобальный обработчик ошибок для всех хендлеров бота."""
-    logger.error("❌ Произошла ошибка при обработке обновления:", exc_info=context.error)
+    """Global error handler for all bot handlers."""
+    logger.error("❌ An error occurred while processing update:", exc_info=context.error)
 
-    # Отправляем сообщение пользователю о том, что произошла ошибка
+    # Send error message to user
     try:
         if isinstance(update, Update) and update.effective_message:
             error_message = (
-                "⚠️ Произошла ошибка при обработке вашего запроса.\n\n"
-                "Пожалуйста, попробуйте еще раз или обратитесь к администратору."
+                "⚠️ An error occurred while processing your request.\n\n"
+                "Please try again or contact administrator."
             )
 
-            # Для некоторых критических ошибок показываем детали
+            # Show details for some critical errors
             if context.error:
                 error_type = type(context.error).__name__
                 if "Database" in error_type or "SQL" in error_type:
-                    error_message += "\n\n💡 Возможно, требуется миграция базы данных. Запустите: python migrate_db.py"
+                    error_message += "\n\n💡 Database migration may be required. Run: python migrate_db.py"
                 elif "Connection" in error_type or "Network" in error_type:
-                    error_message += "\n\n💡 Проблема с подключением. Проверьте Redis и PostgreSQL."
+                    error_message += "\n\n💡 Connection problem. Check Redis and PostgreSQL."
 
             await update.effective_message.reply_text(error_message)
     except Exception as e:
-        logger.error(f"❌ Не удалось отправить сообщение об ошибке пользователю: {e}")
+        logger.error(f"❌ Failed to send error message to user: {e}")
 
 def main() -> None:
     load_dotenv()
     init_db()
 
-    # Запускаем миграцию языков
-    logger.info("🌍 Запуск миграции языков...")
+    # Run language migration
+    logger.info("🌍 Running language migration...")
     migrate_language_field()
 
     try:
         gemini_api_key = os.getenv('GEMINI_API_KEY')
         if not gemini_api_key:
-            logger.critical("❌ GEMINI_API_KEY не найден!")
+            logger.critical("❌ GEMINI_API_KEY not found!")
             return
         genai.configure(api_key=gemini_api_key)
         gemini_model = genai.GenerativeModel(GEMINI_MODEL_NAME)
-        logger.info(f"🤖 Модель AI '{GEMINI_MODEL_NAME}' успешно инициализирована.")
+        logger.info(f"🤖 AI model '{GEMINI_MODEL_NAME}' successfully initialized.")
     except Exception as e:
-        logger.critical(f"❌ Критическая ошибка при инициализации Gemini: {e}")
+        logger.critical(f"❌ Critical error while initializing Gemini: {e}")
         return
 
     token = os.getenv('TELEGRAM_BOT_TOKEN')
     if not token:
-        logger.critical("❌ TELEGRAM_BOT_TOKEN не найден!")
+        logger.critical("❌ TELEGRAM_BOT_TOKEN not found!")
         return
-        
+
     application = Application.builder().token(token).build()
-    
-    # Используем partial, чтобы "закрепить" аргумент gemini_model за обработчиком
+
+    # Use partial to bind gemini_model argument to handler
     message_handler_with_model = partial(handle_message, gemini_model=gemini_model)
 
-    # Регистрируем глобальный обработчик ошибок
+    # Register global error handler
     application.add_error_handler(error_handler)
 
-    # Команды
+    # Commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("mydocs", my_docs_command))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("clear", clear_command))
 
-    # Callback queries (inline кнопки)
+    # Callback queries (inline buttons)
     application.add_handler(CallbackQueryHandler(button_callback))
 
-    # Обработчик для всех типов документов (PDF, Excel, Word)
+    # Handler for all document types (PDF, Excel, Word)
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
-    # Обработчик для аудио и голосовых сообщений
+    # Handler for audio and voice messages
     application.add_handler(MessageHandler(filters.AUDIO | filters.VOICE, handle_audio))
 
-    # Обработчик текстовых сообщений с приоритетами:
-    # 1. Проверяем Reply Keyboard кнопки
-    # 2. Обрабатываем как обычное сообщение
+    # Text message handler with priorities:
+    # 1. Check Reply Keyboard buttons
+    # 2. Process as regular message
     async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # Сначала проверяем Reply Keyboard
+        # First check Reply Keyboard
         if await handle_reply_keyboard(update, context):
             return
-        # Если нет, обрабатываем как обычное сообщение (вопрос/AI chat)
+        # If not, process as regular message (question/AI chat)
         await message_handler_with_model(update, context)
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
 
 
-    logger.info("✅ Бот готов к работе и запускается...")
+    logger.info("✅ Bot ready and starting...")
     application.run_polling()
 
 if __name__ == '__main__':
