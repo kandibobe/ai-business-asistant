@@ -1,6 +1,6 @@
 """
-Расширенное форматирование сообщений с красивым выводом.
-Используется для AI ответов, настроек, подсказок и т.д.
+Advanced message formatting with beautiful output.
+Used for AI responses, settings, tooltips, etc.
 """
 from typing import Dict, Any, List
 from datetime import datetime
@@ -14,57 +14,57 @@ def format_ai_answer(
     source_doc: str = None
 ) -> str:
     """
-    Форматирует AI ответ с красивым оформлением.
+    Formats AI answer with beautiful styling.
 
     Args:
-        answer: Текст ответа от AI
-        role: Роль AI (для иконки)
-        style: Стиль ответа (для контекста)
-        processing_time: Время обработки в секундах
-        source_doc: Название документа-источника
+        answer: AI response text
+        role: AI role (for icon)
+        style: Response style (for context)
+        processing_time: Processing time in seconds
+        source_doc: Source document name
 
     Returns:
-        Отформатированное сообщение
+        Formatted message
     """
     from config.ai_personas import get_role_display_name, get_style_display_name
 
     role_display = get_role_display_name(role)
     style_display = get_style_display_name(style)
 
-    # Добавляем декоративную линию вверху
+    # Add decorative line at top
     header = f"╭─────────────────────────╮\n"
     header += f"│  {role_display}  │\n"
     header += f"╰─────────────────────────╯\n\n"
 
-    # Основной ответ
+    # Main answer
     formatted_answer = header + answer
 
-    # Добавляем футер с метаинформацией
+    # Add footer with metadata
     footer = "\n\n"
     footer += "─" * 30 + "\n"
 
     if source_doc:
-        footer += f"📎 <i>Источник: {source_doc[:40]}{'...' if len(source_doc) > 40 else ''}</i>\n"
+        footer += f"📎 <i>Source: {source_doc[:40]}{'...' if len(source_doc) > 40 else ''}</i>\n"
 
-    footer += f"⚙️ <i>Стиль: {style_display}</i>\n"
+    footer += f"⚙️ <i>Style: {style_display}</i>\n"
 
     if processing_time > 0:
-        footer += f"⏱️ <i>Обработано за {processing_time:.1f} сек</i>\n"
+        footer += f"⏱️ <i>Processed in {processing_time:.1f} sec</i>\n"
 
-    footer += "\n💡 <i>Задайте уточняющий вопрос или используйте кнопки ниже</i>"
+    footer += "\n💡 <i>Ask a follow-up question or use buttons below</i>"
 
     return formatted_answer + footer
 
 
 def format_settings_overview(user_settings: Dict[str, Any]) -> str:
     """
-    Форматирует обзор настроек пользователя.
+    Formats user settings overview.
 
     Args:
-        user_settings: Словарь с настройками пользователя
+        user_settings: Dictionary with user settings
 
     Returns:
-        Красиво отформатированный обзор настроек
+        Beautifully formatted settings overview
     """
     from config.ai_personas import (
         get_role_display_name,
@@ -81,59 +81,59 @@ def format_settings_overview(user_settings: Dict[str, Any]) -> str:
     lang_info = LANGUAGES.get(lang, LANGUAGES['ru'])
 
     return f"""
-⚙️ <b>Ваши настройки</b>
+⚙️ <b>Your Settings</b>
 
-<b>AI Конфигурация:</b>
-🎭 Роль: {get_role_display_name(role)}
-📝 Стиль ответов: {get_style_display_name(style)}
-⚡ Режим работы: {get_mode_display_name(mode)}
+<b>AI Configuration:</b>
+🎭 Role: {get_role_display_name(role)}
+📝 Response Style: {get_style_display_name(style)}
+⚡ Work Mode: {get_mode_display_name(mode)}
 
-<b>Интерфейс:</b>
-🌐 Язык: {lang_info['flag']} {lang_info['name']}
-🔔 Уведомления: {'✅ Вкл' if user_settings.get('notifications', True) else '❌ Выкл'}
+<b>Interface:</b>
+🌐 Language: {lang_info['flag']} {lang_info['name']}
+🔔 Notifications: {'✅ On' if user_settings.get('notifications', True) else '❌ Off'}
 
 <b>Premium:</b>
-{'💎 Активна Premium подписка' if user_settings.get('is_premium') else '✨ Premium не активен'}
+{'💎 Premium subscription active' if user_settings.get('is_premium') else '✨ Premium not active'}
 
-📌 <i>Нажмите на раздел ниже для изменения настроек</i>
+📌 <i>Click on section below to change settings</i>
 """
 
 
 def format_role_selection() -> str:
-    """Форматирует меню выбора роли AI"""
+    """Formats AI role selection menu"""
     return """
-🎭 <b>Выберите роль AI помощника</b>
+🎭 <b>Select AI Assistant Role</b>
 
-Роль определяет стиль и подход к ответам:
+Role determines the style and approach to responses:
 
-📊 <b>Бизнес-аналитик</b> - фокус на цифрах и метриках
-💼 <b>Бизнес-консультант</b> - стратегические рекомендации
-👨‍🏫 <b>Преподаватель</b> - простые объяснения
-🔬 <b>Исследователь</b> - глубокий детальный анализ
-🎨 <b>Креативный</b> - нестандартный подход
-🤖 <b>Универсальный</b> - сбалансированный (по умолчанию)
-⚖️ <b>Юрист</b> - юридические аспекты
+📊 <b>Business Analyst</b> - focus on numbers and metrics
+💼 <b>Business Consultant</b> - strategic recommendations
+👨‍🏫 <b>Teacher</b> - simple explanations
+🔬 <b>Researcher</b> - deep detailed analysis
+🎨 <b>Creative</b> - unconventional approach
+🤖 <b>Universal</b> - balanced (default)
+⚖️ <b>Lawyer</b> - legal aspects
 
-💡 <i>Выберите роль, которая лучше всего подходит для вашей задачи</i>
+💡 <i>Choose the role that best fits your task</i>
 """
 
 
 def format_style_selection() -> str:
-    """Форматирует меню выбора стиля ответов"""
+    """Formats response style selection menu"""
     return """
-📝 <b>Выберите стиль ответов</b>
+📝 <b>Select Response Style</b>
 
-Стиль определяет формат и объем ответов:
+Style determines format and volume of responses:
 
-⚡ <b>Кратко</b> - только ключевые факты (2-3 предложения)
-📝 <b>Стандартно</b> - сбалансированный ответ (по умолчанию)
-📚 <b>Подробно</b> - детальный ответ со всеми нюансами
-📋 <b>Списком</b> - структурированные bullet points
-⚖️ <b>Плюсы/Минусы</b> - анализ преимуществ и недостатков
-👶 <b>Простыми словами</b> - объяснение как для ребенка
-💎 <b>Профессионально</b> - деловой стиль для отчетов
+⚡ <b>Brief</b> - only key facts (2-3 sentences)
+📝 <b>Standard</b> - balanced response (default)
+📚 <b>Detailed</b> - detailed answer with all nuances
+📋 <b>List</b> - structured bullet points
+⚖️ <b>Pros/Cons</b> - analysis of advantages and disadvantages
+👶 <b>Simple Terms</b> - explain like to a child
+💎 <b>Professional</b> - business style for reports
 
-💡 <i>Вы можете менять стиль в любой момент</i>
+💡 <i>You can change style anytime</i>
 """
 
 
@@ -144,16 +144,16 @@ def format_processing_status(
     step: str = None
 ) -> str:
     """
-    Форматирует статус обработки с прогресс-баром.
+    Formats processing status with progress bar.
 
     Args:
-        status: Статус ('processing', 'analyzing', 'done', 'error')
-        progress: Прогресс от 0 до 100
-        doc_name: Название документа
-        step: Текущий шаг обработки
+        status: Status ('processing', 'analyzing', 'done', 'error')
+        progress: Progress from 0 to 100
+        doc_name: Document name
+        step: Current processing step
 
     Returns:
-        Отформатированное сообщение со статусом
+        Formatted status message
     """
     status_icons = {
         'uploading': '📤',
@@ -164,17 +164,17 @@ def format_processing_status(
     }
 
     status_texts = {
-        'uploading': 'Загрузка документа...',
-        'processing': 'Обработка документа...',
-        'analyzing': 'AI анализ содержимого...',
-        'done': 'Готово!',
-        'error': 'Ошибка обработки'
+        'uploading': 'Uploading document...',
+        'processing': 'Processing document...',
+        'analyzing': 'AI content analysis...',
+        'done': 'Ready!',
+        'error': 'Processing error'
     }
 
     icon = status_icons.get(status, '⏳')
-    text = status_texts.get(status, 'Обработка...')
+    text = status_texts.get(status, 'Processing...')
 
-    # Создаем прогресс-бар
+    # Create progress bar
     bar_length = 20
     filled = int((progress / 100) * bar_length)
     bar = '█' * filled + '░' * (bar_length - filled)
@@ -191,81 +191,81 @@ def format_processing_status(
         message += f"<i>{step}</i>\n"
 
     if status == 'done':
-        message += "\n✨ <i>Документ готов к использованию!</i>"
+        message += "\n✨ <i>Document ready to use!</i>"
     elif status == 'error':
-        message += "\n⚠️ <i>Попробуйте загрузить документ еще раз</i>"
+        message += "\n⚠️ <i>Try uploading document again</i>"
 
     return message
 
 
 def format_quick_help(context: str = 'general') -> str:
     """
-    Форматирует контекстную подсказку.
+    Formats contextual hint.
 
     Args:
-        context: Контекст ('general', 'document', 'question', 'settings')
+        context: Context ('general', 'document', 'question', 'settings')
 
     Returns:
-        Подсказка для пользователя
+        Hint for user
     """
     helps = {
         'general': """
-💡 <b>Подсказка</b>
+💡 <b>Quick Tips</b>
 
-<b>Быстрые команды:</b>
-/start - Главное меню
-/stats - Ваша статистика
-/mydocs - Список документов
-/help - Полная справка
+<b>Quick Commands:</b>
+/start - Main menu
+/stats - Your statistics
+/mydocs - Document list
+/help - Full help
 
-<b>Или просто:</b>
-📤 Отправьте файл для анализа
-💬 Задайте вопрос по активному документу
-🔗 Отправьте URL для парсинга
+<b>Or simply:</b>
+📤 Send file for analysis
+💬 Ask question about active document
+🔗 Send URL for parsing
 """,
 
         'document': """
-💡 <b>Работа с документом</b>
+💡 <b>Working with Document</b>
 
-<b>Вы можете:</b>
-💬 Задать вопрос - просто напишите в чат
-📊 Визуализировать - создать графики (для Excel)
-📥 Экспортировать - получить PDF отчет
-📋 Получить краткое содержание
-🔍 Извлечь ключевые слова
+<b>You can:</b>
+💬 Ask question - just write in chat
+📊 Visualize - create charts (for Excel)
+📥 Export - get PDF report
+📋 Get summary
+🔍 Extract keywords
 
-<b>Примеры вопросов:</b>
-"Какие основные выводы?"
-"Сколько всего записей в таблице?"
-"Перечисли ключевые риски"
+<b>Example questions:</b>
+"What are the main conclusions?"
+"How many total records in table?"
+"List key risks"
 """,
 
         'question': """
-💡 <b>Как задавать вопросы</b>
+💡 <b>How to Ask Questions</b>
 
-<b>Советы для лучших результатов:</b>
-✅ Будьте конкретны в вопросах
-✅ Можете просить пояснить ответ
-✅ Спрашивайте о конкретных разделах
-✅ Просите привести примеры
+<b>Tips for best results:</b>
+✅ Be specific in questions
+✅ You can ask to clarify answer
+✅ Ask about specific sections
+✅ Request examples
 
-<b>Плохо:</b> "Что тут?"
-<b>Хорошо:</b> "Какая динамика продаж за Q3?"
+<b>Bad:</b> "What's here?"
+<b>Good:</b> "What's the Q3 sales trend?"
 """,
 
         'settings': """
-💡 <b>Настройка AI</b>
+💡 <b>AI Settings</b>
 
-<b>Роль</b> - определяет подход к ответам
-(аналитик, консультант, преподаватель)
+<b>Role</b> - determines approach to responses
+(analyst, consultant, teacher)
 
-<b>Стиль</b> - определяет формат ответов
-(кратко, подробно, списком)
+<b>Style</b> - determines response format
+(brief, detailed, list)
 
-<b>Режим</b> - влияет на скорость и качество
-(быстрый, стандартный, продвинутый)
+<b>Mode</b> - affects speed and quality
+(fast, standard, advanced)
 
-💡 Экспериментируйте с настройками!
+💡 Experiment with settings!
 """
     }
 
@@ -274,14 +274,14 @@ def format_quick_help(context: str = 'general') -> str:
 
 def format_document_card(doc: Dict[str, Any], is_active: bool = False) -> str:
     """
-    Форматирует карточку документа для списка.
+    Formats document card for list.
 
     Args:
-        doc: Данные документа
-        is_active: Является ли документ активным
+        doc: Document data
+        is_active: Is document active
 
     Returns:
-        Отформатированная карточка
+        Formatted card
     """
     type_icons = {
         'pdf': '📄',
@@ -292,9 +292,9 @@ def format_document_card(doc: Dict[str, Any], is_active: bool = False) -> str:
     }
 
     icon = type_icons.get(doc.get('type_raw', ''), '📎')
-    active_mark = " ✅ <b>АКТИВНЫЙ</b>" if is_active else ""
+    active_mark = " ✅ <b>ACTIVE</b>" if is_active else ""
 
-    name = doc.get('name', 'Без названия')
+    name = doc.get('name', 'Untitled')
     if len(name) > 35:
         name = name[:32] + "..."
 
@@ -303,60 +303,60 @@ def format_document_card(doc: Dict[str, Any], is_active: bool = False) -> str:
     words = doc.get('word_count', 0)
 
     card = f"{icon} <code>{name}</code>{active_mark}\n"
-    card += f"    📏 {size} · 📝 {words:,} слов · 📅 {date}\n"
+    card += f"    📏 {size} · 📝 {words:,} words · 📅 {date}\n"
 
     return card
 
 
 def format_error_message(error_type: str, details: str = None) -> str:
     """
-    Форматирует сообщение об ошибке с полезными советами.
+    Formats error message with helpful tips.
 
     Args:
-        error_type: Тип ошибки
-        details: Детали ошибки
+        error_type: Error type
+        details: Error details
 
     Returns:
-        Красиво отформатированное сообщение об ошибке
+        Beautifully formatted error message
     """
     error_messages = {
         'file_too_large': {
             'icon': '📦',
-            'title': 'Файл слишком большой',
-            'message': 'Telegram ограничивает размер файлов до 20 MB.',
-            'solution': '💡 Попробуйте сжать файл или разбить на части'
+            'title': 'File too large',
+            'message': 'Telegram limits file size to 20 MB.',
+            'solution': '💡 Try compressing file or splitting into parts'
         },
         'unsupported_format': {
             'icon': '📎',
-            'title': 'Неподдерживаемый формат',
-            'message': 'Этот формат файла пока не поддерживается.',
-            'solution': '💡 Поддерживаются: PDF, Excel, Word, Аудио'
+            'title': 'Unsupported format',
+            'message': 'This file format is not yet supported.',
+            'solution': '💡 Supported: PDF, Excel, Word, Audio'
         },
         'processing_failed': {
             'icon': '⚠️',
-            'title': 'Ошибка обработки',
-            'message': 'Не удалось обработать документ.',
-            'solution': '💡 Попробуйте загрузить файл еще раз'
+            'title': 'Processing error',
+            'message': 'Failed to process document.',
+            'solution': '💡 Try uploading file again'
         },
         'no_active_document': {
             'icon': '📄',
-            'title': 'Нет активного документа',
-            'message': 'Чтобы задать вопрос, сначала загрузите документ.',
-            'solution': '💡 Отправьте файл или выберите из списка'
+            'title': 'No active document',
+            'message': 'To ask question, first upload document.',
+            'solution': '💡 Send file or select from list'
         },
         'api_error': {
             'icon': '🔌',
-            'title': 'Ошибка API',
-            'message': 'Проблема с подключением к AI сервису.',
-            'solution': '💡 Попробуйте через несколько секунд'
+            'title': 'API Error',
+            'message': 'Problem connecting to AI service.',
+            'solution': '💡 Try again in few seconds'
         },
     }
 
     error_info = error_messages.get(error_type, {
         'icon': '❌',
-        'title': 'Произошла ошибка',
-        'message': details or 'Неизвестная ошибка',
-        'solution': '💡 Обратитесь в поддержку если проблема повторяется'
+        'title': 'An error occurred',
+        'message': details or 'Unknown error',
+        'solution': '💡 Contact support if problem persists'
     })
 
     message = f"{error_info['icon']} <b>{error_info['title']}</b>\n\n"
@@ -364,48 +364,48 @@ def format_error_message(error_type: str, details: str = None) -> str:
     message += f"{error_info['solution']}"
 
     if details:
-        message += f"\n\n<i>Детали: {details[:100]}</i>"
+        message += f"\n\n<i>Details: {details[:100]}</i>"
 
     return message
 
 
 def format_success_message(action: str, details: str = None) -> str:
     """
-    Форматирует сообщение об успехе.
+    Formats success message.
 
     Args:
-        action: Тип действия
-        details: Дополнительная информация
+        action: Action type
+        details: Additional information
 
     Returns:
-        Красиво отформатированное сообщение
+        Beautifully formatted message
     """
     success_messages = {
         'document_uploaded': {
             'icon': '✅',
-            'title': 'Документ успешно загружен!',
-            'next': 'Задавайте вопросы или используйте меню документа'
+            'title': 'Document uploaded successfully!',
+            'next': 'Ask questions or use document menu'
         },
         'settings_saved': {
             'icon': '💾',
-            'title': 'Настройки сохранены!',
-            'next': 'Новые настройки будут применены к следующим ответам'
+            'title': 'Settings saved!',
+            'next': 'New settings will apply to next responses'
         },
         'export_ready': {
             'icon': '📥',
-            'title': 'Экспорт готов!',
-            'next': 'Проверьте файл выше в чате'
+            'title': 'Export ready!',
+            'next': 'Check file above in chat'
         },
         'document_deleted': {
             'icon': '🗑️',
-            'title': 'Документ удален',
-            'next': 'Вы можете загрузить новый документ'
+            'title': 'Document deleted',
+            'next': 'You can upload new document'
         },
     }
 
     success_info = success_messages.get(action, {
         'icon': '✅',
-        'title': 'Готово!',
+        'title': 'Done!',
         'next': details or ''
     })
 
