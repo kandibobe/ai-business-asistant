@@ -346,12 +346,14 @@ def get_safe_file_path(base_dir: str, user_id: int, filename: str) -> str:
     # Санитизация имени файла
     safe_filename = sanitize_filename(filename)
 
-    # Создаем уникальное имя с timestamp (включая микросекунды для уникальности)
+    # Создаем уникальное имя с timestamp и UUID для гарантированной уникальности
     import time
+    import uuid
     timestamp = time.time()  # Включает микросекунды
     timestamp_str = f"{int(timestamp)}_{int((timestamp % 1) * 1000000)}"
+    unique_id = str(uuid.uuid4())[:8]  # Короткий UUID для дополнительной уникальности
     name, ext = os.path.splitext(safe_filename)
-    unique_filename = f"{user_id}_{timestamp_str}_{name}{ext}"
+    unique_filename = f"{user_id}_{timestamp_str}_{unique_id}_{name}{ext}"
 
     # Создаем путь
     user_dir = os.path.join(base_dir, str(user_id))

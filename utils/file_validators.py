@@ -194,6 +194,21 @@ def is_valid_audio(file_path: str) -> bool:
         audio = AudioSegment.from_file(file_path)
         return len(audio) > 0
     except Exception:
+        # Fallback: Check if file has valid audio header (MP3, WAV, OGG)
+        try:
+            with open(file_path, 'rb') as f:
+                header = f.read(4)
+                # Check for common audio file headers
+                if header[:3] == b'\xff\xfb\x90':  # MP3 header
+                    return True
+                elif header[:4] == b'RIFF':  # WAV header
+                    return True
+                elif header[:4] == b'OggS':  # OGG header
+                    return True
+                elif header[:4] == b'fLaC':  # FLAC header
+                    return True
+        except Exception:
+            pass
         return False
 
 
@@ -222,15 +237,19 @@ def sanitize_file_path(file_path: str) -> str:
         file_path: File path to sanitize
 
     Returns:
-        Sanitized file path
+        Sanitized file path (with forward slashes for cross-platform compatibility)
     """
     # Remove null bytes
     file_path = file_path.replace('\x00', '')
 
+    # Remove path traversal attempts BEFORE normalizing
+    # This prevents os.normpath from resolving malicious paths
+    file_path = file_path.replace('..', '')
+
     # Normalize path
     file_path = os.path.normpath(file_path)
 
-    # Remove path traversal attempts
-    file_path = file_path.replace('..', '')
+    # Convert to forward slashes for cross-platform compatibility
+    file_path = file_path.replace('\\', '/')
 
     return file_path

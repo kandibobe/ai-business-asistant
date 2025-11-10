@@ -90,6 +90,59 @@ def migrate_add_language_mode():
         else:
             print("ℹ️  Столбец 'active_document_id' уже существует.")
 
+        # Проверяем наличие столбца email
+        check_email = text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name='users' AND column_name='email';
+        """)
+
+        result = db.execute(check_email).fetchone()
+
+        if not result:
+            print("➕ Добавляем столбец 'email' в таблицу 'users'...")
+            db.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN email VARCHAR;
+            """))
+            db.commit()
+
+            # Добавляем unique constraint на email
+            print("➕ Добавляем unique constraint на 'email'...")
+            try:
+                db.execute(text("""
+                    ALTER TABLE users
+                    ADD CONSTRAINT users_email_unique UNIQUE (email);
+                """))
+                db.commit()
+            except Exception as e:
+                print(f"⚠️  Constraint уже существует или ошибка: {e}")
+                db.rollback()
+
+            print("✅ Столбец 'email' успешно добавлен.")
+        else:
+            print("ℹ️  Столбец 'email' уже существует.")
+
+        # Проверяем наличие столбца password_hash
+        check_password = text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name='users' AND column_name='password_hash';
+        """)
+
+        result = db.execute(check_password).fetchone()
+
+        if not result:
+            print("➕ Добавляем столбец 'password_hash' в таблицу 'users'...")
+            db.execute(text("""
+                ALTER TABLE users
+                ADD COLUMN password_hash VARCHAR;
+            """))
+            db.commit()
+            print("✅ Столбец 'password_hash' успешно добавлен.")
+        else:
+            print("ℹ️  Столбец 'password_hash' уже существует.")
+
         print("\n🎉 Миграция успешно завершена!")
 
     except Exception as e:
