@@ -24,7 +24,14 @@ def migrate_language_field():
         return True  # Not critical, return True to allow bot to continue
 
     database_url = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    engine = create_engine(database_url)
+    # Add timeout settings for reliability
+    engine = create_engine(
+        database_url,
+        connect_args={
+            "connect_timeout": 10,  # 10 second timeout
+            "options": "-c statement_timeout=30000"  # 30 second query timeout
+        }
+    )
 
     try:
         with engine.connect() as connection:
