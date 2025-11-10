@@ -58,6 +58,7 @@ export default function ChatPage() {
       timestamp: new Date().toISOString(),
     }
 
+    const messageText = input
     dispatch(addMessage(userMessage))
     setInput('')
     dispatch(sendMessageStart())
