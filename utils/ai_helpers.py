@@ -142,17 +142,25 @@ def generate_ai_response(
         except Exception as e:
             error_str = str(e).lower()
 
+            # Check if this is a retryable error
+            is_retryable = (
+                "rate limit" in error_str or "429" in error_str or
+                "quota" in error_str or "403" in error_str or
+                "timeout" in error_str or "timed out" in error_str or
+                "connection" in error_str or "network" in error_str or
+                "temporarily unavailable" in error_str or "503" in error_str or
+                "service unavailable" in error_str or "500" in error_str
+            )
+
             # Classify errors
             if "rate limit" in error_str or "429" in error_str:
                 last_error = AIRateLimitError(f"AI rate limit exceeded: {str(e)}")
             elif "quota" in error_str or "403" in error_str:
                 last_error = AIQuotaError(f"AI quota exceeded: {str(e)}")
-            elif "timeout" in error_str or "timed out" in error_str:
-                logger.warning(f"AI request timed out (attempt {attempt + 1}/{max_retries}): {str(e)}")
-                last_error = TimeoutError(str(e))
-            elif "connection" in error_str or "network" in error_str:
-                logger.warning(f"Network error (attempt {attempt + 1}/{max_retries}): {str(e)}")
-                last_error = ConnectionError(str(e))
+            elif is_retryable:
+                # Retryable error - log and continue
+                logger.warning(f"Retryable error (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                last_error = e
             else:
                 # Permanent error, don't retry
                 logger.error(f"AI service error (non-retryable): {str(e)}")

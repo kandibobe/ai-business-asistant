@@ -129,9 +129,14 @@ def clear_user_documents(db: Session, user: models.User) -> int:
     """Alias для delete_user_documents."""
     return delete_user_documents(db, user)
 
-def delete_document(db: Session, document_id: int) -> bool:
-    """Удаляет конкретный документ по ID."""
-    document = get_document_by_id(db, document_id)
+def delete_document(db: Session, document_id: int | models.Document) -> bool:
+    """Удаляет конкретный документ по ID или объекту."""
+    # Поддержка передачи как ID, так и объекта Document
+    if isinstance(document_id, models.Document):
+        document = document_id
+        document_id = document.id
+    else:
+        document = get_document_by_id(db, document_id)
     if not document:
         return False
 
