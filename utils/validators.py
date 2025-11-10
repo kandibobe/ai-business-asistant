@@ -73,7 +73,7 @@ class UserResponse(BaseModel):
 
 class DocumentUpload(BaseModel):
     """Метаданные при загрузке документа."""
-    document_type: str = Field(..., regex="^(pdf|excel|word|audio|url)$")
+    document_type: str = Field(..., pattern="^(pdf|excel|word|audio|url)$")
 
 
 class DocumentResponse(BaseModel):
@@ -144,18 +144,18 @@ class ChatHistory(BaseModel):
 
 class UserSettings(BaseModel):
     """Настройки пользователя."""
-    language: str = Field("ru", regex="^(ru|en|de|uk)$")
-    mode: str = Field("standard", regex="^(fast|standard|advanced)$")
-    ai_role: str = Field("assistant", regex="^(assistant|analyst|consultant|advisor|teacher|researcher|creative|developer|business_expert|data_scientist|financial_advisor)$")
-    response_style: str = Field("standard", regex="^(brief|standard|detailed|creative|formal|casual|technical)$")
+    language: str = Field("ru", pattern="^(ru|en|de|uk)$")
+    mode: str = Field("standard", pattern="^(fast|standard|advanced)$")
+    ai_role: str = Field("assistant", pattern="^(assistant|analyst|consultant|advisor|teacher|researcher|creative|developer|business_expert|data_scientist|financial_advisor)$")
+    response_style: str = Field("standard", pattern="^(brief|standard|detailed|creative|formal|casual|technical)$")
     notifications_enabled: bool = True
     auto_analysis_enabled: bool = False
 
 
 class SettingsUpdate(BaseModel):
     """Обновление настроек."""
-    language: Optional[str] = Field(None, regex="^(ru|en|de|uk)$")
-    mode: Optional[str] = Field(None, regex="^(fast|standard|advanced)$")
+    language: Optional[str] = Field(None, pattern="^(ru|en|de|uk)$")
+    mode: Optional[str] = Field(None, pattern="^(fast|standard|advanced)$")
     ai_role: Optional[str] = None
     response_style: Optional[str] = None
     notifications_enabled: Optional[bool] = None
@@ -197,7 +197,7 @@ class Base64EncodeRequest(BaseModel):
 class HashGenerateRequest(BaseModel):
     """Запрос генерации хэша."""
     text: str = Field(..., max_length=100000)
-    algorithm: str = Field("sha256", regex="^(md5|sha1|sha256|sha512)$")
+    algorithm: str = Field("sha256", pattern="^(md5|sha1|sha256|sha512)$")
 
 
 class QRCodeRequest(BaseModel):
