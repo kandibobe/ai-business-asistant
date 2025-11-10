@@ -155,3 +155,60 @@ def set_active_document(db: Session, user: models.User, document_id: int | None)
     if user.active_document:
         db.refresh(user.active_document)
     return user.active_document
+
+
+# === Web User Functions ===
+
+def get_user_by_username(db: Session, username: str) -> models.User | None:
+    """Get user by username."""
+    return db.query(models.User).filter(models.User.username == username).first()
+
+
+def get_user_by_email(db: Session, email: str) -> models.User | None:
+    """Get user by email."""
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
+def get_user_by_telegram_id(db: Session, telegram_id: int) -> models.User | None:
+    """Get user by Telegram user_id."""
+    return db.query(models.User).filter(models.User.user_id == telegram_id).first()
+
+
+def get_user_by_id(db: Session, user_id: int) -> models.User | None:
+    """Get user by internal database ID."""
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def create_web_user(
+    db: Session,
+    email: str,
+    username: str,
+    password_hash: str,
+    first_name: str = None,
+    last_name: str = None
+) -> models.User:
+    """Create a new web user with email and password."""
+    import random
+
+    # Generate unique user_id for web users (use negative numbers to distinguish from Telegram)
+    user_id = -random.randint(1000000, 9999999)
+    while get_user_by_telegram_id(db, user_id):
+        user_id = -random.randint(1000000, 9999999)
+
+    user = models.User(
+        user_id=user_id,
+        email=email,
+        username=username,
+        password_hash=password_hash,
+        first_name=first_name,
+        last_name=last_name
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def get_user_documents(db: Session, user: models.User) -> list[models.Document]:
+    """Get all documents for a user (alias for get_all_user_documents)."""
+    return get_all_user_documents(db, user)
