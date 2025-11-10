@@ -15,7 +15,9 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(BigInteger, unique=True, nullable=False, index=True)
-    username = Column(String, nullable=True)
+    username = Column(String, nullable=True, index=True)
+    email = Column(String, nullable=True, unique=True, index=True)  # Для web users
+    password_hash = Column(String, nullable=True)  # Для web users
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=now())

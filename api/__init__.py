@@ -1,3 +1,1 @@
-"""
-API package for AI Business Assistant
-"""
+"""API package for REST API."""

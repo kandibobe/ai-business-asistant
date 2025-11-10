@@ -1,152 +1,140 @@
 """
-Documents API routes
+Documents routes.
+Upload, list, view, delete documents.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import List
 import os
-import shutil
-from datetime import datetime
 
-from api.dependencies import get_db, get_current_user, document_to_dict
-from api.models.documents import (
-    DocumentResponse,
-    DocumentListResponse,
-    UploadResponse,
-    DeleteResponse,
-    ActivateResponse
-)
-from database import models
-from utils.file_validators import validate_file_upload
+from api.dependencies import get_db, get_current_user
+from utils.validators import DocumentResponse, DocumentList, DocumentContent
+from utils.security import validate_file, get_safe_file_path, FileValidationError
+from database import crud
+from database.models import User
+from tasks import process_pdf_task, process_excel_task, process_word_task
 
 router = APIRouter()
 
+UPLOAD_DIR = "downloads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-@router.get("", response_model=DocumentListResponse)
-async def get_documents(
-    page: int = 1,
-    page_size: int = 20,
-    current_user: models.User = Depends(get_current_user),
+
+@router.get("/", response_model=DocumentList)
+async def list_documents(
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get list of user's documents with pagination
+    Get list of all user documents.
 
-    - **page**: Page number (default: 1)
-    - **page_size**: Number of items per page (default: 20, max: 100)
+    Returns list with active document ID.
     """
-    # Validate pagination
-    if page < 1:
-        page = 1
-    if page_size < 1 or page_size > 100:
-        page_size = 20
+    documents = crud.get_user_documents(db, current_user)
+    active_doc = crud.get_active_document_for_user(db, current_user)
 
-    skip = (page - 1) * page_size
-
-    # Get total count
-    total = db.query(models.Document).filter(
-        models.Document.user_id == current_user.id
-    ).count()
-
-    # Get documents
-    documents = db.query(models.Document).filter(
-        models.Document.user_id == current_user.id
-    ).order_by(
-        models.Document.uploaded_at.desc()
-    ).offset(skip).limit(page_size).all()
-
-    return DocumentListResponse(
-        documents=[DocumentResponse(**document_to_dict(doc)) for doc in documents],
-        total=total,
-        page=page,
-        page_size=page_size
-    )
+    return {
+        "documents": documents,
+        "total": len(documents),
+        "active_document_id": active_doc.id if active_doc else None
+    }
 
 
-@router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
-    current_user: models.User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Upload a new document for processing
+    Upload a document for processing.
 
-    Supported formats: PDF, Excel, Word, Audio (MP3, WAV), Text
-    Max file size: 50MB
+    Supports: PDF, Excel, Word files.
     """
-    # Validate file
-    validation_result = validate_file_upload(file)
-    if not validation_result["valid"]:
+    # Determine file type
+    file_ext = os.path.splitext(file.filename)[1].lower()
+
+    file_type_map = {
+        '.pdf': ('pdf', process_pdf_task),
+        '.xlsx': ('excel', process_excel_task),
+        '.xls': ('excel', process_excel_task),
+        '.docx': ('word', process_word_task),
+        '.doc': ('word', process_word_task),
+    }
+
+    if file_ext not in file_type_map:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=validation_result["error"]
+            detail=f"Unsupported file type: {file_ext}. Supported: PDF, Excel, Word"
         )
 
-    # Create uploads directory if not exists
-    upload_dir = "uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-
-    # Generate unique filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"{current_user.user_id}_{timestamp}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
+    file_type, task_func = file_type_map[file_ext]
 
     # Save file
+    safe_path = get_safe_file_path(UPLOAD_DIR, current_user.user_id, file.filename)
+
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        contents = await file.read()
+        with open(safe_path, 'wb') as f:
+            f.write(contents)
+
+        # Validate file
+        is_valid, error_msg = validate_file(safe_path, file.filename, file_type)
+        if not is_valid:
+            os.remove(safe_path)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg
+            )
+
+        # Create document record (will be updated by Celery task)
+        document = crud.create_user_document(
+            db,
+            current_user,
+            filename=file.filename,
+            file_path=safe_path,
+            extracted_text="Processing...",
+            document_type=file_type,
+            file_size=len(contents)
+        )
+
+        # Queue processing task
+        task_func.delay(
+            chat_id=None,  # Not from Telegram
+            user_id=current_user.user_id,
+            username=current_user.username,
+            first_name=current_user.first_name,
+            last_name=current_user.last_name,
+            file_path=safe_path,
+            file_name=file.filename
+        )
+
+        return document
+
+    except FileValidationError as e:
+        if os.path.exists(safe_path):
+            os.remove(safe_path)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
+        if os.path.exists(safe_path):
+            os.remove(safe_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save file: {str(e)}"
+            detail=f"Upload failed: {str(e)}"
         )
 
-    # Get file size
-    file_size = os.path.getsize(file_path)
 
-    # Create document record
-    new_document = models.Document(
-        user_id=current_user.id,
-        file_name=file.filename,
-        file_path=file_path,
-        document_type=validation_result["file_type"],
-        file_size=file_size,
-        status="pending",
-        is_active=False
-    )
-
-    db.add(new_document)
-    db.commit()
-    db.refresh(new_document)
-
-    # TODO: Trigger async processing with Celery
-    # process_document_task.delay(new_document.id, file_path)
-
-    return UploadResponse(
-        id=new_document.id,
-        file_name=new_document.file_name,
-        document_type=new_document.document_type,
-        file_size=new_document.file_size,
-        status=new_document.status,
-        message="Document uploaded successfully. Processing will start shortly."
-    )
-
-
-@router.get("/{document_id}", response_model=DocumentResponse)
+@router.get("/{document_id}", response_model=DocumentContent)
 async def get_document(
     document_id: int,
-    current_user: models.User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Get details of a specific document
-    """
-    document = db.query(models.Document).filter(
-        models.Document.id == document_id,
-        models.Document.user_id == current_user.id
-    ).first()
+    """Get document by ID with full content."""
+    document = crud.get_document_by_id(db, document_id)
 
     if not document:
         raise HTTPException(
@@ -154,59 +142,65 @@ async def get_document(
             detail="Document not found"
         )
 
-    return DocumentResponse(**document_to_dict(document))
+    # Check ownership
+    if document.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    return {
+        "id": document.id,
+        "file_name": document.file_name,
+        "content": document.content or "",
+        "summary": document.summary,
+        "keywords": document.keywords
+    }
 
 
-@router.delete("/{document_id}", response_model=DeleteResponse)
+@router.delete("/{document_id}")
 async def delete_document(
     document_id: int,
-    current_user: models.User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Delete a document
-    """
-    document = db.query(models.Document).filter(
-        models.Document.id == document_id,
-        models.Document.user_id == current_user.id
-    ).first()
+    """Delete a document."""
+    document = crud.get_document_by_id(db, document_id)
 
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found"
+        )
+
+    # Check ownership
+    if document.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
         )
 
     # Delete file from disk
     if document.file_path and os.path.exists(document.file_path):
         try:
             os.remove(document.file_path)
-        except Exception as e:
-            print(f"Failed to delete file: {e}")
+        except:
+            pass
 
     # Delete from database
-    db.delete(document)
-    db.commit()
+    crud.delete_document(db, document_id)
 
-    return DeleteResponse(
-        success=True,
-        message="Document deleted successfully"
-    )
+    return {"message": "Document deleted successfully"}
 
 
-@router.put("/{document_id}/activate", response_model=ActivateResponse)
+@router.put("/{document_id}/activate")
 async def activate_document(
     document_id: int,
-    current_user: models.User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Set a document as active for chat context
-    """
-    document = db.query(models.Document).filter(
-        models.Document.id == document_id,
-        models.Document.user_id == current_user.id
-    ).first()
+    """Set document as active for chat."""
+    document = crud.get_document_by_id(db, document_id)
 
     if not document:
         raise HTTPException(
@@ -214,18 +208,13 @@ async def activate_document(
             detail="Document not found"
         )
 
-    # Deactivate all other documents
-    db.query(models.Document).filter(
-        models.Document.user_id == current_user.id,
-        models.Document.id != document_id
-    ).update({"is_active": False})
+    # Check ownership
+    if document.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
 
-    # Activate this document
-    document.is_active = True
-    db.commit()
+    crud.set_active_document(db, current_user, document_id)
 
-    return ActivateResponse(
-        success=True,
-        document_id=document.id,
-        message=f"Document '{document.file_name}' activated successfully"
-    )
+    return {"message": "Document activated", "document_id": document_id}

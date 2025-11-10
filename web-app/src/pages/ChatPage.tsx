@@ -17,12 +17,15 @@ import {
 } from '@mui/icons-material'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
-import { addMessage, sendMessageStart, clearMessages } from '@/store/slices/chatSlice'
+import { addMessage, sendMessageStart, sendMessageSuccess, sendMessageFailure, clearMessages } from '@/store/slices/chatSlice'
+import { showSnackbar } from '@/store/slices/uiSlice'
+import { chatApi } from '@/api/services'
 
 export default function ChatPage() {
   const dispatch = useDispatch()
   const { messages, isLoading } = useSelector((state: RootState) => state.chat)
   const { user } = useSelector((state: RootState) => state.auth)
+  const { activeDocument } = useSelector((state: RootState) => state.documents)
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -37,6 +40,17 @@ export default function ChatPage() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
+    // Check if there's an active document
+    if (!activeDocument) {
+      dispatch(
+        showSnackbar({
+          message: 'Please upload and activate a document first',
+          severity: 'warning',
+        })
+      )
+      return
+    }
+
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
@@ -50,31 +64,25 @@ export default function ChatPage() {
     dispatch(sendMessageStart())
 
     try {
-      // Import chat service
-      const { chatService } = await import('@/api/services')
-
-      // Send message to API
-      const response = await chatService.sendMessage({
-        message: messageText
-      })
+      const response = await chatApi.sendMessage(input, activeDocument.id)
 
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
-        content: response.answer,
-        timestamp: response.timestamp,
-        response_time: response.response_time,
-      }
-      dispatch(addMessage(aiMessage))
-    } catch (error) {
-      console.error('Failed to send message:', error)
-      const errorMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant' as const,
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: response.message,
         timestamp: new Date().toISOString(),
+        response_time: response.response_time_ms / 1000, // Convert to seconds
       }
-      dispatch(addMessage(errorMessage))
+
+      dispatch(sendMessageSuccess(aiMessage))
+    } catch (error: any) {
+      dispatch(sendMessageFailure(error.message))
+      dispatch(
+        showSnackbar({
+          message: `AI error: ${error.message}`,
+          severity: 'error',
+        })
+      )
     }
   }
 
