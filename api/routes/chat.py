@@ -22,6 +22,7 @@ from utils.ai_helpers import (
     AIRateLimitError,
     AIQuotaError,
 )
+from utils.cache import ai_chat_cache
 from database import crud
 from database.models import User
 from config import GEMINI_MODEL_NAME
@@ -92,10 +93,20 @@ async def send_message(
     "{message.message}"
     """
 
-    # Call AI with retry logic
+    # Check cache first
     start_time = time.time()
+    cached_response = ai_chat_cache.get(prompt)
+
+    if cached_response:
+        logger.info(f"Returning cached response for user {current_user.user_id}")
+        # Update response time to reflect cache retrieval
+        cached_response["response_time_ms"] = int((time.time() - start_time) * 1000)
+        cached_response["cached"] = True
+        return cached_response
+
+    # Call AI with retry logic (cache miss)
     try:
-        logger.info(f"Sending message to AI for user {current_user.user_id}")
+        logger.info(f"Cache miss - sending message to AI for user {current_user.user_id}")
         response = generate_ai_response(gemini_model, prompt)
         response_time_ms = int((time.time() - start_time) * 1000)
 
@@ -109,12 +120,18 @@ async def send_message(
 
         logger.info(f"AI response generated in {response_time_ms}ms")
 
-        return {
+        # Prepare response
+        response_data = {
             "message": response_text,
             "response_time_ms": response_time_ms,
             "cached": False,
             "tokens_used": None
         }
+
+        # Cache the response (async, don't wait)
+        ai_chat_cache.set(prompt, response_data)
+
+        return response_data
 
     except AIRateLimitError as e:
         logger.error(f"AI rate limit exceeded: {str(e)}")
@@ -176,6 +193,32 @@ async def get_chat_history(
         "document_id": document_id,
         "messages": [],
         "total_messages": 0
+    }
+
+
+# Cache management endpoints
+@router.get("/cache/stats")
+async def get_cache_stats(current_user: User = Depends(get_current_user)):
+    """
+    Get AI response cache statistics.
+
+    Requires authentication.
+    """
+    stats = ai_chat_cache.get_stats()
+    return stats
+
+
+@router.delete("/cache/clear")
+async def clear_cache(current_user: User = Depends(get_current_user)):
+    """
+    Clear all cached AI responses.
+
+    Requires authentication. Useful for testing or forcing fresh responses.
+    """
+    cleared = ai_chat_cache.clear_all()
+    return {
+        "message": "Cache cleared successfully",
+        "keys_cleared": cleared
     }
 
 
