@@ -201,8 +201,9 @@ class TestDocumentProcessingFlow:
         from tasks import process_pdf_task
         from database import crud
 
-        # Mock telegram bot
-        with patch('tasks.bot') as mock_bot:
+        # Mock telegram bot and database session
+        with patch('tasks.bot') as mock_bot, \
+             patch('tasks.SessionLocal', return_value=db_session):
             mock_bot.send_message = MagicMock()
 
             # Process PDF
@@ -233,7 +234,8 @@ class TestDocumentProcessingFlow:
         """Test that Excel processing extracts data correctly."""
         from tasks import process_excel_task
 
-        with patch('tasks.bot') as mock_bot:
+        with patch('tasks.bot') as mock_bot, \
+             patch('tasks.SessionLocal', return_value=db_session):
             mock_bot.send_message = MagicMock()
 
             process_excel_task(
@@ -261,7 +263,8 @@ class TestDocumentProcessingFlow:
         """Test that Word processing extracts text and tables."""
         from tasks import process_word_task
 
-        with patch('tasks.bot') as mock_bot:
+        with patch('tasks.bot') as mock_bot, \
+             patch('tasks.SessionLocal', return_value=db_session):
             mock_bot.send_message = MagicMock()
 
             process_word_task(

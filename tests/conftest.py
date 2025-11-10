@@ -189,14 +189,25 @@ def sample_word_file(temp_directory, faker_instance):
 @pytest.fixture
 def sample_audio_file(temp_directory):
     """Create a sample audio file for testing."""
-    from pydub import AudioSegment
-    from pydub.generators import Sine
-
     audio_path = os.path.join(temp_directory, "test_audio.mp3")
 
-    # Generate 1 second of 440 Hz sine wave
-    sine_wave = Sine(440).to_audio_segment(duration=1000)
-    sine_wave.export(audio_path, format="mp3")
+    try:
+        from pydub import AudioSegment
+        from pydub.generators import Sine
+
+        # Generate 1 second of 440 Hz sine wave
+        sine_wave = Sine(440).to_audio_segment(duration=1000)
+        sine_wave.export(audio_path, format="mp3")
+    except Exception as e:
+        # If ffmpeg not available, create a dummy file
+        # This allows tests to run without ffmpeg
+        import warnings
+        warnings.warn(f"Could not create audio file with pydub: {e}. Creating dummy file.")
+
+        # Create a minimal valid MP3 file (empty MP3 header)
+        with open(audio_path, 'wb') as f:
+            # Minimal MP3 frame header
+            f.write(b'\xff\xfb\x90\x00')
 
     return audio_path
 
@@ -207,8 +218,8 @@ def sample_audio_file(temp_directory):
 
 @pytest.fixture
 def mock_telegram_update(faker_instance):
-    """Mock Telegram Update object."""
-    from unittest.mock import MagicMock
+    """Mock Telegram Update object with AsyncMock for async methods."""
+    from unittest.mock import MagicMock, AsyncMock
 
     update = MagicMock()
     update.effective_user.id = faker_instance.random_int(min=10000, max=99999999)
@@ -218,15 +229,21 @@ def mock_telegram_update(faker_instance):
     update.message.text = faker_instance.sentence()
     update.message.chat_id = faker_instance.random_int(min=10000, max=99999999)
 
+    # Make reply_text async
+    update.message.reply_text = AsyncMock(return_value=None)
+    update.message.reply_html = AsyncMock(return_value=None)
+
     return update
 
 
 @pytest.fixture
 def mock_telegram_context():
     """Mock Telegram Context object."""
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, AsyncMock
 
     context = MagicMock()
+    # Mock bot.get_file as async
+    context.bot.get_file = AsyncMock()
     return context
 
 

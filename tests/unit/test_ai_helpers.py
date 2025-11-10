@@ -66,7 +66,7 @@ class TestGenerateAIResponse:
                 prompt=""
             )
 
-    @patch('utils.ai_helpers.ai_chat_cache')
+    @patch('utils.cache.ai_chat_cache')
     def test_caching_integration(self, mock_cache, mock_gemini_model):
         """Test integration with AI response cache."""
         # Cache miss, then hit
