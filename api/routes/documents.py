@@ -70,8 +70,8 @@ async def upload_document(
 
     file_type, task_func = file_type_map[file_ext]
 
-    # Save file
-    safe_path = get_safe_file_path(UPLOAD_DIR, current_user.user_id, file.filename)
+    # Save file (use internal database ID for consistent paths)
+    safe_path = get_safe_file_path(UPLOAD_DIR, current_user.id, file.filename)
 
     try:
         contents = await file.read()
@@ -98,10 +98,11 @@ async def upload_document(
             file_size=len(contents)
         )
 
-        # Queue processing task
+        # Queue processing task (use telegram user_id for Celery compatibility)
+        # Note: For web users, user_id is negative; for Telegram users, it's their chat_id
         task_func.delay(
             chat_id=None,  # Not from Telegram
-            user_id=current_user.user_id,
+            user_id=current_user.user_id if hasattr(current_user, 'user_id') else current_user.id,
             username=current_user.username,
             first_name=current_user.first_name,
             last_name=current_user.last_name,

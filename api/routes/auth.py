@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
-from api.dependencies import get_db, create_access_token, create_refresh_token, decode_token
+from api.dependencies import get_db, create_access_token, create_refresh_token, decode_token, get_current_user
 from utils.validators import UserRegister, UserLogin, Token, TokenRefresh, UserResponse
 from database import crud
 
@@ -87,9 +87,9 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Incorrect username or password"
         )
 
-    # Create tokens
-    access_token = create_access_token({"user_id": user.user_id})
-    refresh_token = create_refresh_token({"user_id": user.user_id})
+    # Create tokens with internal database ID for web users
+    access_token = create_access_token({"user_id": user.id})
+    refresh_token = create_refresh_token({"user_id": user.id})
 
     return {
         "access_token": access_token,
@@ -122,17 +122,17 @@ async def refresh_token(token_data: TokenRefresh, db: Session = Depends(get_db))
                 detail="Invalid token"
             )
 
-        # Verify user exists
-        user = crud.get_user_by_telegram_id(db, user_id)
+        # Verify user exists (use internal database ID)
+        user = crud.get_user_by_id(db, user_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
             )
 
-        # Create new tokens
-        access_token = create_access_token({"user_id": user.user_id})
-        refresh_token = create_refresh_token({"user_id": user.user_id})
+        # Create new tokens with internal database ID
+        access_token = create_access_token({"user_id": user.id})
+        refresh_token = create_refresh_token({"user_id": user.id})
 
         return {
             "access_token": access_token,
