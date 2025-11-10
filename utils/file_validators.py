@@ -101,3 +101,136 @@ def validate_file_size(file_path: str) -> bool:
 
     file_size = os.path.getsize(file_path)
     return file_size <= MAX_FILE_SIZE
+
+
+# ============================================================================
+# Additional validation functions for testing and security
+# ============================================================================
+
+def is_valid_pdf(file_path: str) -> bool:
+    """
+    Validate if file is a valid PDF.
+
+    Args:
+        file_path: Path to the PDF file
+
+    Returns:
+        True if valid PDF, False otherwise
+    """
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        return False
+
+    try:
+        import fitz  # PyMuPDF
+        with fitz.open(file_path) as doc:
+            # Try to access basic properties
+            _ = doc.page_count
+            return True
+    except Exception:
+        return False
+
+
+def is_valid_excel(file_path: str) -> bool:
+    """
+    Validate if file is a valid Excel file.
+
+    Args:
+        file_path: Path to the Excel file
+
+    Returns:
+        True if valid Excel, False otherwise
+    """
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        return False
+
+    try:
+        import pandas as pd
+        # Try to read the file
+        pd.read_excel(file_path, nrows=0)
+        return True
+    except Exception:
+        return False
+
+
+def is_valid_word(file_path: str) -> bool:
+    """
+    Validate if file is a valid Word document.
+
+    Args:
+        file_path: Path to the Word file
+
+    Returns:
+        True if valid Word document, False otherwise
+    """
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        return False
+
+    try:
+        from docx import Document
+        doc = Document(file_path)
+        # Try to access basic properties
+        _ = len(doc.paragraphs)
+        return True
+    except Exception:
+        return False
+
+
+def is_valid_audio(file_path: str) -> bool:
+    """
+    Validate if file is a valid audio file.
+
+    Args:
+        file_path: Path to the audio file
+
+    Returns:
+        True if valid audio, False otherwise
+    """
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        return False
+
+    try:
+        from pydub import AudioSegment
+        # Try to load the audio file
+        audio = AudioSegment.from_file(file_path)
+        return len(audio) > 0
+    except Exception:
+        return False
+
+
+def get_file_size_mb(file_path: str) -> float:
+    """
+    Get file size in megabytes.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        File size in MB, or 0.0 if file doesn't exist
+    """
+    if not os.path.exists(file_path):
+        return 0.0
+
+    file_size_bytes = os.path.getsize(file_path)
+    return file_size_bytes / (1024 * 1024)
+
+
+def sanitize_file_path(file_path: str) -> str:
+    """
+    Sanitize file path to prevent path traversal and other attacks.
+
+    Args:
+        file_path: File path to sanitize
+
+    Returns:
+        Sanitized file path
+    """
+    # Remove null bytes
+    file_path = file_path.replace('\x00', '')
+
+    # Normalize path
+    file_path = os.path.normpath(file_path)
+
+    # Remove path traversal attempts
+    file_path = file_path.replace('..', '')
+
+    return file_path
