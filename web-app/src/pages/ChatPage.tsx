@@ -44,21 +44,38 @@ export default function ChatPage() {
       timestamp: new Date().toISOString(),
     }
 
+    const messageText = input
     dispatch(addMessage(userMessage))
     setInput('')
     dispatch(sendMessageStart())
 
-    // TODO: Implement actual API call
-    setTimeout(() => {
+    try {
+      // Import chat service
+      const { chatService } = await import('@/api/services')
+
+      // Send message to API
+      const response = await chatService.sendMessage({
+        message: messageText
+      })
+
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
-        content: 'This is a placeholder response. The AI backend will be connected soon.',
-        timestamp: new Date().toISOString(),
-        response_time: 1.2,
+        content: response.answer,
+        timestamp: response.timestamp,
+        response_time: response.response_time,
       }
       dispatch(addMessage(aiMessage))
-    }, 1000)
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant' as const,
+        content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date().toISOString(),
+      }
+      dispatch(addMessage(errorMessage))
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
