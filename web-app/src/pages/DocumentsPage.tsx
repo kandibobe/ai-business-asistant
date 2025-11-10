@@ -37,8 +37,35 @@ export default function DocumentsPage() {
 
   const handleUpload = async () => {
     if (!selectedFile) return
-    // TODO: Implement upload logic
-    console.log('Uploading:', selectedFile)
+
+    try {
+      // Import document service
+      const { documentService } = await import('@/api/services')
+      const { useDispatch } = await import('react-redux')
+      const { uploadStart, uploadProgress as updateProgress, uploadSuccess, uploadFailure } = await import('@/store/slices/documentsSlice')
+
+      const dispatch = useDispatch()
+
+      // Start upload
+      dispatch(uploadStart())
+
+      // Upload with progress tracking
+      const response = await documentService.upload(selectedFile, (progress) => {
+        dispatch(updateProgress(progress))
+      })
+
+      // Success
+      dispatch(uploadSuccess(response))
+      setSelectedFile(null)
+
+      // Reload documents list
+      const documentsResponse = await documentService.list()
+      // TODO: Update documents in store
+
+    } catch (error) {
+      console.error('Upload failed:', error)
+      // TODO: Dispatch upload failure
+    }
   }
 
   const getDocumentIcon = (type: string) => {
