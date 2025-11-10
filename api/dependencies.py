@@ -95,8 +95,8 @@ async def get_current_user(
             detail="Could not validate credentials"
         )
 
-    # Get user from database
-    user = crud.get_user_by_telegram_id(db, user_id)
+    # Get user from database using internal database ID
+    user = crud.get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

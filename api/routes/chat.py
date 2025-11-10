@@ -98,7 +98,7 @@ async def send_message(
     cached_response = ai_chat_cache.get(prompt)
 
     if cached_response:
-        logger.info(f"Returning cached response for user {current_user.user_id}")
+        logger.info(f"Returning cached response for user {current_user.id}")
         # Update response time to reflect cache retrieval
         cached_response["response_time_ms"] = int((time.time() - start_time) * 1000)
         cached_response["cached"] = True
@@ -106,7 +106,7 @@ async def send_message(
 
     # Call AI with retry logic (cache miss)
     try:
-        logger.info(f"Cache miss - sending message to AI for user {current_user.user_id}")
+        logger.info(f"Cache miss - sending message to AI for user {current_user.id}")
         response = generate_ai_response(gemini_model, prompt)
         response_time_ms = int((time.time() - start_time) * 1000)
 
