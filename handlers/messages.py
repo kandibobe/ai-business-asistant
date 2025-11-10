@@ -6,6 +6,7 @@ import google.generativeai as genai
 from sqlalchemy.orm import Session
 import re
 from urllib.parse import urlparse
+import logging
 
 from database.database import SessionLocal
 from database import crud
@@ -15,6 +16,14 @@ from tasks import scrape_url_task
 # Импортируем систему безопасности
 from utils.security import sanitize_text_input, validate_url, SecurityError
 from middleware.rate_limiter import rate_limit
+
+# Импортируем AI helpers с retry logic
+from utils.ai_helpers import generate_ai_response, safe_get_text, AIServiceError, truncate_context
+
+# Импортируем кэширование
+from utils.cache import ai_chat_cache
+
+logger = logging.getLogger(__name__)
 
 @rate_limit('ai_requests')
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gemini_model: genai.GenerativeModel):
@@ -99,7 +108,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
             )
             return
 
-        document_text = active_document.extracted_text
+        # Truncate document text if too long
+        document_text = truncate_context(active_document.extracted_text, max_tokens=25000)
+
         thinking_message = await update.message.reply_text("🧠 Thinking about your question...")
 
         prompt = f"""
@@ -116,15 +127,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
         """
 
         try:
-            response = gemini_model.generate_content(prompt)
+            # Check cache first
+            cache_key = f"doc_{active_document.id}_{question}"
+            cached_response = ai_chat_cache.get(cache_key)
+
+            if cached_response:
+                logger.info(f"Using cached response for user {user.id}")
+                answer_text = cached_response.get('text', 'No answer available.')
+            else:
+                # Use retry logic helper
+                logger.info(f"Generating AI response for user {user.id} (doc: {active_document.id})")
+                response = generate_ai_response(gemini_model, prompt)
+                answer_text = safe_get_text(response)
+
+                if not answer_text:
+                    raise AIServiceError("AI did not return a valid response")
+
+                # Cache the response
+                ai_chat_cache.set(cache_key, {'text': answer_text}, ttl=3600)
+
             await context.bot.edit_message_text(
-                text=response.text,
+                text=answer_text,
+                chat_id=thinking_message.chat_id,
+                message_id=thinking_message.message_id
+            )
+
+        except AIServiceError as e:
+            logger.error(f"AI service error for user {user.id}: {str(e)}")
+            await context.bot.edit_message_text(
+                text=f"❌ AI service temporarily unavailable.\n\n{str(e)}\n\nPlease try again in a few moments.",
                 chat_id=thinking_message.chat_id,
                 message_id=thinking_message.message_id
             )
         except Exception as e:
+            logger.exception(f"Unexpected error in message handler for user {user.id}")
             await context.bot.edit_message_text(
-                text=f"❌ An error occurred while contacting AI. Please try again.\nDetails: {e}",
+                text=f"❌ An unexpected error occurred. Our team has been notified.\n\nPlease try again later.",
                 chat_id=thinking_message.chat_id,
                 message_id=thinking_message.message_id
             )
