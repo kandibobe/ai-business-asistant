@@ -23,10 +23,9 @@ import {
   saveSettingsStart,
   saveSettingsSuccess,
   saveSettingsFailure,
-  loadSettingsStart,
-  loadSettingsSuccess,
 } from '@/store/slices/settingsSlice'
-import { settingsService } from '@/api/services'
+import { showSnackbar } from '@/store/slices/uiSlice'
+import { settingsApi } from '@/api/services'
 
 export default function SettingsPage() {
   const dispatch = useDispatch()
@@ -86,55 +85,27 @@ export default function SettingsPage() {
   }
 
   const handleSave = async () => {
+    dispatch(saveSettingsStart())
+
     try {
-      dispatch(saveSettingsStart())
-
-      // Prepare update request
-      const updateData: any = {}
-      if (localSettings.language !== settings.language) {
-        updateData.language = localSettings.language
-      }
-      if (localSettings.ai_role !== settings.ai_role) {
-        updateData.ai_role = localSettings.ai_role
-      }
-      if (localSettings.response_style !== settings.response_style) {
-        updateData.ai_style = localSettings.response_style // API expects ai_style
-      }
-      if (localSettings.ai_mode !== settings.ai_mode) {
-        updateData.mode = localSettings.ai_mode // API expects mode
-      }
-      if (localSettings.notifications_enabled !== settings.notifications_enabled) {
-        updateData.notifications_enabled = localSettings.notifications_enabled
-      }
-
-      // Only send if there are changes
-      if (Object.keys(updateData).length === 0) {
-        showNotification('No changes to save', 'info')
-        return
-      }
-
-      const response = await settingsService.update(updateData)
-      dispatch(saveSettingsSuccess(response.settings))
-      setHasChanges(false)
-      showNotification('Settings saved successfully!', 'success')
+      const updatedSettings = await settingsApi.update(localSettings)
+      dispatch(saveSettingsSuccess(updatedSettings))
+      setSaved(true)
+      dispatch(
+        showSnackbar({
+          message: 'Settings saved successfully!',
+          severity: 'success',
+        })
+      )
     } catch (error: any) {
-      console.error('Failed to save settings:', error)
-      const errorMessage = error.response?.data?.detail || error.message || 'Failed to save settings'
-      dispatch(saveSettingsFailure(errorMessage))
-      showNotification(errorMessage, 'error')
+      dispatch(saveSettingsFailure(error.message))
+      dispatch(
+        showSnackbar({
+          message: `Failed to save settings: ${error.message}`,
+          severity: 'error',
+        })
+      )
     }
-  }
-
-  const showNotification = (message: string, severity: 'success' | 'error' | 'info') => {
-    setNotification({ open: true, message, severity })
-  }
-
-  if (settings.isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    )
   }
 
   return (

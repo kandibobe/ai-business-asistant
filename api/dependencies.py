@@ -1,31 +1,28 @@
 """
-Dependencies for FastAPI routes (auth, database, etc.)
+API dependencies for dependency injection.
 """
-from typing import Generator, Optional
+from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-import jwt
-from datetime import datetime, timedelta
 import os
 
 from database.database import SessionLocal
-from database import models
+from database.models import User
+from database import crud
 
-# Security
+# JWT settings
+SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+REFRESH_TOKEN_EXPIRE_DAYS = 30
+
 security = HTTPBearer()
 
-# JWT Configuration
-JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
-REFRESH_TOKEN_EXPIRE_DAYS = 7  # 7 days
 
-
-def get_db() -> Generator[Session, None, None]:
-    """
-    Database dependency - provides database session
-    """
+def get_db():
+    """Database session dependency."""
     db = SessionLocal()
     try:
         yield db
@@ -33,125 +30,91 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-def create_access_token(user_id: int) -> str:
-    """
-    Create JWT access token
-    """
+def create_access_token(data: dict) -> str:
+    """Create JWT access token."""
+    from datetime import datetime, timedelta
+
+    to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode = {
-        "user_id": user_id,
-        "exp": expire,
-        "type": "access"
-    }
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
+    to_encode.update({"exp": expire, "type": "access"})
+
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: int) -> str:
-    """
-    Create JWT refresh token
-    """
+def create_refresh_token(data: dict) -> str:
+    """Create JWT refresh token."""
+    from datetime import datetime, timedelta
+
+    to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode = {
-        "user_id": user_id,
-        "exp": expire,
-        "type": "refresh"
-    }
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
+    to_encode.update({"exp": expire, "type": "refresh"})
+
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def verify_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> int:
-    """
-    Verify JWT token and return user_id
-    """
-    token = credentials.credentials
-
+def decode_token(token: str) -> dict:
+    """Decode and validate JWT token."""
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id: int = payload.get("user_id")
-        token_type: str = payload.get("type")
-
-        if user_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        if token_type != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        return user_id
-
-    except jwt.ExpiredSignatureError:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
 
 async def get_current_user(
-    user_id: int = Depends(verify_token),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
-) -> models.User:
-    """
-    Get current authenticated user from database
-    """
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+) -> User:
+    """Get current authenticated user from JWT token."""
+    token = credentials.credentials
 
-    if not user:
+    try:
+        payload = decode_token(token)
+        user_id: int = payload.get("user_id")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+
+        # Check token type
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type"
+            )
+
+    except JWTError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+
+    # Get user from database
+    user = crud.get_user_by_telegram_id(db, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
 
     return user
 
 
-def user_to_dict(user: models.User) -> dict:
-    """
-    Convert User model to dictionary for API response
-    """
-    return {
-        "id": user.id,
-        "user_id": user.user_id,
-        "username": user.username,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "language": user.language,
-        "is_premium": user.is_premium or False,
-        "created_at": user.created_at.isoformat() if user.created_at else None
-    }
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Get current user if token provided, otherwise None."""
+    if credentials is None:
+        return None
 
-
-def document_to_dict(doc: models.Document) -> dict:
-    """
-    Convert Document model to dictionary for API response
-    """
-    return {
-        "id": doc.id,
-        "file_name": doc.file_name,
-        "document_type": doc.document_type,
-        "file_size": doc.file_size,
-        "status": doc.status,
-        "is_active": doc.is_active,
-        "uploaded_at": doc.uploaded_at.isoformat() if doc.uploaded_at else None,
-        "processed_at": doc.processed_at.isoformat() if doc.processed_at else None,
-        "summary": doc.summary,
-        "page_count": getattr(doc, 'page_count', None),
-        "word_count": getattr(doc, 'word_count', None)
-    }
+    try:
+        return await get_current_user(credentials, db)
+    except HTTPException:
+        return None

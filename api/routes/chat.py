@@ -1,252 +1,246 @@
 """
-Chat API routes (REST + WebSocket)
+Chat routes.
+Send messages to AI, get chat history.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
-from typing import Optional
-import time
-from datetime import datetime
+import google.generativeai as genai
 import os
+from dotenv import load_dotenv
+import time
+import logging
+
+load_dotenv()
 
 from api.dependencies import get_db, get_current_user
-from api.models.chat import (
-    MessageRequest,
-    MessageResponse,
-    ChatHistoryItem,
-    ChatHistoryResponse
+from utils.validators import ChatMessage, ChatResponse
+from utils.ai_helpers import (
+    generate_ai_response,
+    safe_get_text,
+    truncate_context,
+    AIServiceError,
+    AIRateLimitError,
+    AIQuotaError,
 )
-from database import models
-from analytics.stats import track_question
+from utils.cache import ai_chat_cache
+from database import crud
+from database.models import User
+from config import GEMINI_MODEL_NAME
 
-# Import AI model
-import google.generativeai as genai
-from config.settings import GEMINI_API_KEY
-
-# Configure Gemini
-genai.configure(api_key=GEMINI_API_KEY)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-
-async def generate_ai_response(question: str, context: Optional[str] = None) -> str:
-    """
-    Generate AI response using Gemini
-    """
-    try:
-        model = genai.GenerativeModel('gemini-pro')
-
-        # Build prompt with context if available
-        if context:
-            prompt = f"""You are an AI business intelligence assistant. Answer the following question based on the provided document context.
-
-Document Context:
-{context[:4000]}
-
-Question: {question}
-
-Provide a helpful, accurate answer based on the document content."""
-        else:
-            prompt = f"""You are an AI business intelligence assistant. Answer the following question:
-
-Question: {question}
-
-Provide a helpful and professional answer."""
-
-        response = model.generate_content(prompt)
-        return response.text
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"AI generation failed: {str(e)}"
-        )
+# Initialize Gemini
+gemini_api_key = os.getenv('GEMINI_API_KEY')
+if gemini_api_key:
+    genai.configure(api_key=gemini_api_key)
+    gemini_model = genai.GenerativeModel(GEMINI_MODEL_NAME)
+else:
+    gemini_model = None
 
 
-@router.post("/message", response_model=MessageResponse)
+@router.post("/message", response_model=ChatResponse)
 async def send_message(
-    data: MessageRequest,
-    current_user: models.User = Depends(get_current_user),
+    message: ChatMessage,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Send a message and get AI response
+    Send a message to AI.
 
-    - **message**: User's question/message
-    - **document_id**: Optional document ID for context
+    If document_id provided, uses that document as context.
+    Otherwise, uses active document.
     """
-    # Get document context if provided
-    context = None
+    if not gemini_model:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service not configured"
+        )
+
+    # Get document for context
     document = None
-
-    if data.document_id:
-        document = db.query(models.Document).filter(
-            models.Document.id == data.document_id,
-            models.Document.user_id == current_user.id
-        ).first()
-
-        if not document:
+    if message.document_id:
+        document = crud.get_document_by_id(db, message.document_id)
+        if not document or document.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Document not found"
             )
+    else:
+        document = crud.get_active_document_for_user(db, current_user)
 
-        context = document.extracted_text
-
-    # Generate AI response
-    start_time = time.time()
-    answer = await generate_ai_response(data.message, context)
-    response_time = time.time() - start_time
-
-    # Track question in database
-    question_record = track_question(
-        db=db,
-        user_id=current_user.user_id,
-        doc_id=data.document_id,
-        question=data.message,
-        answer=answer,
-        response_time=response_time
-    )
-
-    return MessageResponse(
-        answer=answer,
-        response_time=round(response_time, 2),
-        timestamp=datetime.now(),
-        question_id=question_record.id if question_record else None
-    )
-
-
-@router.get("/history", response_model=ChatHistoryResponse)
-async def get_chat_history(
-    document_id: Optional[int] = None,
-    limit: int = 50,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get chat history for the user (optionally filtered by document)
-
-    - **document_id**: Optional document ID to filter history
-    - **limit**: Maximum number of messages to return (default: 50)
-    """
-    query = db.query(models.Question).filter(
-        models.Question.user_id == current_user.id
-    )
-
-    if document_id:
-        query = query.filter(models.Question.document_id == document_id)
-
-    total = query.count()
-    questions = query.order_by(
-        models.Question.created_at.desc()
-    ).limit(limit).all()
-
-    history = [
-        ChatHistoryItem(
-            id=q.id,
-            question=q.question_text,
-            answer=q.answer_text or "",
-            timestamp=q.created_at,
-            response_time=q.response_time,
-            document_id=q.document_id
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active document. Please upload and activate a document first."
         )
-        for q in questions
-    ]
 
-    return ChatHistoryResponse(
-        history=history,
-        total=total
-    )
+    # Truncate context if too long to avoid token limits
+    document_content = truncate_context(document.content or "", max_tokens=30000)
+
+    # Build prompt
+    prompt = f"""
+    You are a business analytics expert. Analyze the document text provided below and answer the user's question.
+    Your answer should be clear, concise and based EXCLUSIVELY on the information from the document.
+    Do not make up anything that is not in the text.
+
+    --- DOCUMENT TEXT ---
+    {document_content}
+    --- END OF DOCUMENT TEXT ---
+
+    USER'S QUESTION:
+    "{message.message}"
+    """
+
+    # Check cache first
+    start_time = time.time()
+    cached_response = ai_chat_cache.get(prompt)
+
+    if cached_response:
+        logger.info(f"Returning cached response for user {current_user.user_id}")
+        # Update response time to reflect cache retrieval
+        cached_response["response_time_ms"] = int((time.time() - start_time) * 1000)
+        cached_response["cached"] = True
+        return cached_response
+
+    # Call AI with retry logic (cache miss)
+    try:
+        logger.info(f"Cache miss - sending message to AI for user {current_user.user_id}")
+        response = generate_ai_response(gemini_model, prompt)
+        response_time_ms = int((time.time() - start_time) * 1000)
+
+        # Safely extract text
+        response_text = safe_get_text(response)
+        if not response_text:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="AI did not generate a valid response"
+            )
+
+        logger.info(f"AI response generated in {response_time_ms}ms")
+
+        # Prepare response
+        response_data = {
+            "message": response_text,
+            "response_time_ms": response_time_ms,
+            "cached": False,
+            "tokens_used": None
+        }
+
+        # Cache the response (async, don't wait)
+        ai_chat_cache.set(prompt, response_data)
+
+        return response_data
+
+    except AIRateLimitError as e:
+        logger.error(f"AI rate limit exceeded: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="AI service rate limit exceeded. Please try again in a few moments."
+        )
+
+    except AIQuotaError as e:
+        logger.error(f"AI quota exceeded: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service quota exceeded. Please contact support."
+        )
+
+    except AIServiceError as e:
+        logger.error(f"AI service error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI service error: {str(e)}"
+        )
+
+    except (ConnectionError, TimeoutError) as e:
+        logger.error(f"Network error after retries: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service temporarily unavailable. Please try again."
+        )
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in AI chat: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}"
+        )
 
 
-@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
-async def clear_chat_history(
-    document_id: Optional[int] = None,
-    current_user: models.User = Depends(get_current_user),
+@router.get("/history/{document_id}")
+async def get_chat_history(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Clear chat history (optionally for specific document)
+    Get chat history for a document.
 
-    - **document_id**: Optional document ID to clear history for
+    TODO: Implement chat history storage.
     """
-    query = db.query(models.Question).filter(
-        models.Question.user_id == current_user.id
-    )
+    document = crud.get_document_by_id(db, document_id)
 
-    if document_id:
-        query = query.filter(models.Question.document_id == document_id)
+    if not document or document.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
 
-    query.delete()
-    db.commit()
+    # TODO: Implement chat history storage
+    return {
+        "document_id": document_id,
+        "messages": [],
+        "total_messages": 0
+    }
 
-    return None
+
+# Cache management endpoints
+@router.get("/cache/stats")
+async def get_cache_stats(current_user: User = Depends(get_current_user)):
+    """
+    Get AI response cache statistics.
+
+    Requires authentication.
+    """
+    stats = ai_chat_cache.get_stats()
+    return stats
 
 
+@router.delete("/cache/clear")
+async def clear_cache(current_user: User = Depends(get_current_user)):
+    """
+    Clear all cached AI responses.
+
+    Requires authentication. Useful for testing or forcing fresh responses.
+    """
+    cleared = ai_chat_cache.clear_all()
+    return {
+        "message": "Cache cleared successfully",
+        "keys_cleared": cleared
+    }
+
+
+# WebSocket endpoint for real-time chat
 @router.websocket("/ws")
-async def websocket_chat(websocket: WebSocket, db: Session = Depends(get_db)):
+async def websocket_chat(websocket: WebSocket):
     """
-    WebSocket endpoint for real-time chat
+    WebSocket endpoint for real-time chat.
 
-    Send JSON: {"message": "your question", "document_id": 123 (optional)}
-    Receive JSON: {"answer": "AI response", "response_time": 1.23, "timestamp": "..."}
+    Client should send: {"token": "jwt_token", "message": "question", "document_id": 123}
     """
     await websocket.accept()
 
     try:
         while True:
-            # Receive message from client
             data = await websocket.receive_json()
 
-            message = data.get("message")
-            document_id = data.get("document_id")
-            user_id = data.get("user_id")  # Should be sent by client after auth
-
-            if not message:
-                await websocket.send_json({
-                    "error": "Message is required"
-                })
-                continue
-
-            # Get document context if provided
-            context = None
-            if document_id:
-                document = db.query(models.Document).filter(
-                    models.Document.id == document_id
-                ).first()
-                if document:
-                    context = document.extracted_text
-
-            # Generate AI response
-            start_time = time.time()
-            try:
-                answer = await generate_ai_response(message, context)
-                response_time = time.time() - start_time
-
-                # Track question if user_id provided
-                if user_id:
-                    track_question(
-                        db=db,
-                        user_id=user_id,
-                        doc_id=document_id,
-                        question=message,
-                        answer=answer,
-                        response_time=response_time
-                    )
-
-                # Send response
-                await websocket.send_json({
-                    "answer": answer,
-                    "response_time": round(response_time, 2),
-                    "timestamp": datetime.now().isoformat()
-                })
-
-            except Exception as e:
-                await websocket.send_json({
-                    "error": f"Failed to generate response: {str(e)}"
-                })
+            # TODO: Implement proper WebSocket authentication and chat
+            await websocket.send_json({
+                "message": "WebSocket chat not yet implemented",
+                "status": "info"
+            })
 
     except WebSocketDisconnect:
-        print("WebSocket client disconnected")
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-        await websocket.close()
+        pass

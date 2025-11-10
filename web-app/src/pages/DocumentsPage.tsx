@@ -35,17 +35,18 @@ import {
   fetchDocumentsSuccess,
   fetchDocumentsFailure,
   uploadStart,
-  uploadProgress as updateProgress,
+  uploadProgress as setUploadProgress,
   uploadSuccess,
   uploadFailure,
-  deleteDocument as removeDocument,
   setActiveDocument,
+  deleteDocument as deleteDocumentAction,
 } from '@/store/slices/documentsSlice'
-import { documentService } from '@/api/services'
+import { showSnackbar } from '@/store/slices/uiSlice'
+import { documentsApi } from '@/api/services'
 
 export default function DocumentsPage() {
   const dispatch = useDispatch()
-  const { documents, isLoading, isUploading, uploadProgress, error } = useSelector(
+  const { documents, isUploading, uploadProgress, activeDocument } = useSelector(
     (state: RootState) => state.documents
   )
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -85,6 +86,30 @@ export default function DocumentsPage() {
     }
   }
 
+  useEffect(() => {
+    loadDocuments()
+  }, [])
+
+  const loadDocuments = async () => {
+    try {
+      dispatch(fetchDocumentsStart())
+      const response = await documentsApi.list()
+      dispatch(fetchDocumentsSuccess(response.documents))
+
+      // Set active document if exists
+      if (response.active_document_id) {
+        const activeDoc = response.documents.find(
+          (doc) => doc.id === response.active_document_id
+        )
+        if (activeDoc) {
+          dispatch(setActiveDocument(activeDoc))
+        }
+      }
+    } catch (error: any) {
+      dispatch(fetchDocumentsFailure(error.message))
+    }
+  }
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0]
@@ -105,66 +130,77 @@ export default function DocumentsPage() {
 
     try {
       dispatch(uploadStart())
-
-      // Upload with progress tracking
-      const response = await documentService.upload(selectedFile, (progress) => {
-        dispatch(updateProgress(Math.round(progress)))
+      const document = await documentsApi.upload(selectedFile, (progress) => {
+        dispatch(setUploadProgress(progress))
       })
 
-      // Success
-      dispatch(uploadSuccess(response as any))
+      dispatch(uploadSuccess(document))
+      dispatch(
+        showSnackbar({
+          message: 'Document uploaded successfully!',
+          severity: 'success',
+        })
+      )
       setSelectedFile(null)
-      showNotification(`${response.file_name} uploaded successfully!`, 'success')
 
-      // Reload documents list
-      await loadDocuments()
+      // Reload documents to get updated list
+      loadDocuments()
     } catch (error: any) {
-      console.error('Upload failed:', error)
-      const errorMessage = error.response?.data?.detail || error.message || 'Upload failed'
-      dispatch(uploadFailure(errorMessage))
-      showNotification(errorMessage, 'error')
-    }
-  }
-
-  const handleDeleteClick = (documentId: number, documentName: string) => {
-    setDeleteDialog({
-      open: true,
-      documentId,
-      documentName,
-    })
-  }
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteDialog.documentId) return
-
-    try {
-      await documentService.delete(deleteDialog.documentId)
-      dispatch(removeDocument(deleteDialog.documentId))
-      showNotification('Document deleted successfully', 'success')
-      setDeleteDialog({ open: false, documentId: null, documentName: '' })
-    } catch (error: any) {
-      console.error('Delete failed:', error)
-      showNotification(error.message || 'Failed to delete document', 'error')
+      dispatch(uploadFailure(error.message))
+      dispatch(
+        showSnackbar({
+          message: `Upload failed: ${error.message}`,
+          severity: 'error',
+        })
+      )
     }
   }
 
   const handleActivate = async (documentId: number) => {
     try {
-      await documentService.activate(documentId)
-      const doc = documents.find(d => d.id === documentId)
+      await documentsApi.activate(documentId)
+      const doc = documents.find((d) => d.id === documentId)
       if (doc) {
         dispatch(setActiveDocument(doc))
-        showNotification('Document activated', 'success')
+        dispatch(
+          showSnackbar({
+            message: 'Document activated',
+            severity: 'success',
+          })
+        )
       }
-      await loadDocuments()
     } catch (error: any) {
-      console.error('Activate failed:', error)
-      showNotification(error.message || 'Failed to activate document', 'error')
+      dispatch(
+        showSnackbar({
+          message: `Failed to activate: ${error.message}`,
+          severity: 'error',
+        })
+      )
     }
   }
 
-  const showNotification = (message: string, severity: 'success' | 'error' | 'info') => {
-    setNotification({ open: true, message, severity })
+  const handleDelete = async (documentId: number) => {
+    if (!confirm('Are you sure you want to delete this document?')) {
+      return
+    }
+
+    try {
+      await documentsApi.delete(documentId)
+      dispatch(deleteDocumentAction(documentId))
+      dispatch(
+        showSnackbar({
+          message: 'Document deleted',
+          severity: 'success',
+        })
+      )
+    } catch (error: any) {
+      dispatch(
+        showSnackbar({
+          message: `Failed to delete: ${error.message}`,
+          severity: 'error',
+        })
+      )
+    }
   }
 
   const getDocumentIcon = (type: string) => {
@@ -281,29 +317,75 @@ export default function DocumentsPage() {
         </CardContent>
       </Card>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" fontWeight={600}>
-          Your Documents ({documents.length})
-        </Typography>
-        <Button onClick={loadDocuments} disabled={isLoading}>
-          Refresh
-        </Button>
-      </Box>
+      <Typography variant="h6" fontWeight={600} gutterBottom>
+        Your Documents ({documents.length})
+      </Typography>
 
-      {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Grid container spacing={3}>
-          {documents.length === 0 ? (
-            <Grid item xs={12}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                  <Description sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary">
-                    No documents uploaded yet. Upload your first document to get started!
-                  </Typography>
+      <Grid container spacing={3}>
+        {documents.length === 0 ? (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                <Description sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary">
+                  No documents uploaded yet. Upload your first document to get started!
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ) : (
+          documents.map((doc) => (
+            <Grid item xs={12} sm={6} md={4} key={doc.id}>
+              <Card
+                sx={{
+                  border: activeDocument?.id === doc.id ? 2 : 0,
+                  borderColor: 'success.main',
+                }}
+              >
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ color: 'primary.main', mr: 2 }}>
+                      {getDocumentIcon(doc.document_type)}
+                    </Box>
+                    <Typography variant="h6" sx={{ flex: 1 }} noWrap>
+                      {doc.file_name}
+                    </Typography>
+                    {activeDocument?.id === doc.id && (
+                      <CheckCircle color="success" fontSize="small" />
+                    )}
+                  </Box>
+                  <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+                    <Chip
+                      label={doc.document_type.toUpperCase()}
+                      size="small"
+                    />
+                    {activeDocument?.id === doc.id && (
+                      <Chip
+                        label="ACTIVE"
+                        size="small"
+                        color="success"
+                      />
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => handleActivate(doc.id)}
+                      disabled={activeDocument?.id === doc.id}
+                      title="Set as active for chat"
+                    >
+                      <Visibility />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDelete(doc.id)}
+                      title="Delete document"
+                    >
+                      <Delete />
+                    </IconButton>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
