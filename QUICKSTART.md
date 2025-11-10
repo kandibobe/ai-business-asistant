@@ -1,548 +1,440 @@
-# 🚀 Quick Start Guide - AI Business Assistant
+# 🚀 Быстрый старт - AI Business Assistant
 
-## Полное руководство по запуску и тестированию веб-приложения
-
----
-
-## 📋 Содержание
-
-1. [Требования](#требования)
-2. [Установка](#установка)
-3. [Настройка](#настройка)
-4. [Запуск Backend API](#запуск-backend-api)
-5. [Запуск Frontend Web App](#запуск-frontend-web-app)
-6. [Тестирование](#тестирование)
-7. [Troubleshooting](#troubleshooting)
+**Готово к запуску за 5 минут!**
 
 ---
 
-## ✅ Требования
+## 📋 Предварительные требования
 
-### Необходимые инструменты:
-- **Python 3.10+** (для backend)
-- **Node.js 18+** и **npm** (для frontend)
-- **PostgreSQL 14+** (база данных)
-- **Git** (для клонирования репозитория)
+### Обязательно нужно:
+1. **Python 3.10+** - [Скачать](https://www.python.org/downloads/)
+2. **PostgreSQL** - [Скачать](https://www.postgresql.org/download/)
+3. **Redis** - [Скачать для Windows](https://github.com/microsoftarchive/redis/releases)
 
-### Опционально:
-- **Redis** (для кэширования, пока не реализовано)
-- **Docker** (для контейнеризации, пока не реализовано)
+### API ключи:
+- **Telegram Bot Token** - получить у [@BotFather](https://t.me/botfather)
+- **Google Gemini API Key** - получить на [Google AI Studio](https://makersuite.google.com/)
 
 ---
 
-## 📦 Установка
+## ⚡ Установка за 5 шагов
 
-### 1. Клонируйте репозиторий (если еще не клонировали)
+### Шаг 1: Клонировать проект
 
-```bash
+```powershell
 git clone https://github.com/kandibobe/ai-business-asistant.git
 cd ai-business-asistant
 ```
 
-### 2. Установите Python зависимости (Backend)
+### Шаг 2: Создать виртуальное окружение
 
-```bash
-# Создайте виртуальное окружение (рекомендуется)
-python3 -m venv venv
+```powershell
+# Создать venv
+python -m venv .venv
 
-# Активируйте виртуальное окружение
-# На Linux/Mac:
-source venv/bin/activate
-# На Windows:
-# venv\Scripts\activate
+# Активировать (Windows)
+.venv\Scripts\activate
 
-# Установите зависимости
-pip install fastapi uvicorn sqlalchemy psycopg2-binary python-jose passlib bcrypt python-multipart google-generativeai alembic python-dotenv
+# Если ошибка про ExecutionPolicy, выполните:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-### 3. Установите Node.js зависимости (Frontend)
+### Шаг 3: Установить зависимости
 
-```bash
-cd web-app
-npm install
-cd ..
+```powershell
+# Обновить pip
+python -m pip install --upgrade pip
+
+# Установить пакеты
+pip install -r requirements.txt
 ```
 
----
+**Возможные проблемы:**
+- Если ошибка с `python-magic` - это нормально, продолжайте
+- На Windows `python-magic-bin` установится автоматически
 
-## ⚙️ Настройка
+### Шаг 4: Настроить .env файл
 
-### 1. Создайте файл `.env` в корне проекта
+```powershell
+# Скопировать пример
+copy .env.example .env
 
-```bash
-# В корне проекта (не в web-app!)
-touch .env
+# Открыть в блокноте и заполнить
+notepad .env
 ```
 
-Добавьте следующие переменные:
+**Минимальная конфигурация .env:**
 
 ```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/ai_business_assistant
+# Telegram (ОБЯЗАТЕЛЬНО!)
+TELEGRAM_BOT_TOKEN=ваш_токен_от_botfather
 
-# JWT Secret (измените на случайную строку!)
-JWT_SECRET=your-super-secret-key-change-me-in-production-12345
+# Google Gemini AI (ОБЯЗАТЕЛЬНО!)
+GEMINI_API_KEY=ваш_gemini_api_key
 
-# Gemini API Key (получите на https://makersuite.google.com/app/apikey)
-GEMINI_API_KEY=your-gemini-api-key-here
+# PostgreSQL (по умолчанию)
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=ai_bot_user
+DB_PASS=your_password
+DB_NAME=ai_bot_db
 
-# Optional: Redis
-REDIS_URL=redis://localhost:6379
+# Redis (по умолчанию)
+REDIS_URL=redis://localhost:6379/0
 ```
 
-### 2. Настройте базу данных PostgreSQL
+**💡 Как получить API ключи:**
 
-```bash
-# Войдите в PostgreSQL
-psql -U postgres
+1. **Telegram Bot Token:**
+   - Откройте [@BotFather](https://t.me/botfather) в Telegram
+   - Отправьте `/newbot`
+   - Следуйте инструкциям
+   - Скопируйте токен вида: `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz`
 
-# Создайте базу данных
-CREATE DATABASE ai_business_assistant;
+2. **Google Gemini API Key:**
+   - Перейдите на [Google AI Studio](https://makersuite.google.com/)
+   - Нажмите "Get API Key"
+   - Создайте новый ключ
+   - Скопируйте ключ вида: `AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ123456`
 
-# Создайте пользователя (если нужно)
-CREATE USER your_user WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE ai_business_assistant TO your_user;
+### Шаг 5: Запустить инфраструктуру
 
-# Выйдите
-\q
+#### Вариант А: Docker (рекомендуется)
+
+```powershell
+# Запустить PostgreSQL и Redis
+docker-compose up -d
+
+# Проверить что запустилось
+docker-compose ps
 ```
 
-### 3. Инициализируйте базу данных
+#### Вариант Б: Локально
 
-```bash
-# Создайте таблицы
-python -c "from database.database import create_tables; create_tables()"
+**PostgreSQL:**
+1. Установите PostgreSQL
+2. Откройте pgAdmin или psql
+3. Создайте базу данных:
+
+```sql
+CREATE DATABASE ai_bot_db;
+CREATE USER ai_bot_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE ai_bot_db TO ai_bot_user;
 ```
 
-### 4. Настройте Frontend (опционально)
+**Redis:**
+1. Установите Redis
+2. Запустите `redis-server`
 
-```bash
-cd web-app
+---
 
-# Создайте .env.local
-cat > .env.local << EOF
-VITE_API_URL=http://localhost:8000
-VITE_WS_URL=ws://localhost:8000
-EOF
+## 🎯 Первый запуск
 
-cd ..
+### 1. Применить миграции БД
+
+```powershell
+# Автоматическое обновление БД
+python upgrade_db.py
 ```
 
----
+**Или вручную:**
 
-## 🔥 Запуск Backend API
-
-### Вариант 1: Использовать скрипт (рекомендуется)
-
-```bash
-# Сделайте скрипт исполняемым
-chmod +x start_api.sh
-
-# Запустите API
-./start_api.sh
+```powershell
+python migrate.py upgrade
 ```
 
-### Вариант 2: Запуск вручную
-
-```bash
-# Активируйте виртуальное окружение
-source venv/bin/activate
-
-# Запустите uvicorn
-uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+**Вы должны увидеть:**
+```
+✅ Database migrations applied successfully!
 ```
 
-**API запущен!** 🎉
+### 2. Запустить бота
 
-- **API URL:** http://localhost:8000
-- **Swagger Docs:** http://localhost:8000/api/docs
-- **ReDoc:** http://localhost:8000/api/redoc
-
----
-
-## 🌐 Запуск Frontend Web App
-
-### В отдельном терминале:
-
-```bash
-cd web-app
-
-# Запустите dev server
-npm run dev
+```powershell
+python main.py
 ```
 
-**Web App запущен!** 🎉
-
-- **Web App URL:** http://localhost:5173
-
----
-
-## 🧪 Тестирование
-
-### Шаг 1: Откройте браузер
-
-Откройте браузер и перейдите на **http://localhost:5173**
-
-### Шаг 2: Регистрация
-
-1. Нажмите на вкладку **"Sign Up"**
-2. Заполните форму:
-   - **Username:** testuser
-   - **Password:** Test123456
-   - **Email:** test@example.com (опционально)
-   - **First Name:** Test
-   - **Last Name:** User
-3. Нажмите **"Sign Up"**
-
-✅ Вы должны автоматически войти в систему и попасть на Dashboard
-
-### Шаг 3: Проверьте Dashboard
-
-На Dashboard вы увидите:
-- **4 карточки** со статистикой (пока все 0)
-- **Quick Actions** кнопки
-- **Recent Documents** (пока пусто)
-- **Premium Upgrade** баннер (если не premium)
-
-### Шаг 4: Загрузите документ
-
-1. Перейдите в **Documents** (боковое меню)
-2. Нажмите **"Select File"**
-3. Выберите любой документ (PDF, Excel, Word, txt)
-4. Нажмите **"Upload"**
-5. Наблюдайте progress bar (0-100%)
-
-✅ Документ загружен! Вы увидите его в списке
-
-**Функции документов:**
-- **Activate** - активировать документ для чата
-- **Delete** - удалить документ (с подтверждением)
-- **Active badge** - показывает активный документ
-
-### Шаг 5: Протестируйте AI Chat
-
-1. Перейдите в **Chat** (боковое меню)
-2. Активируйте документ если нужно (в Documents)
-3. Введите вопрос: "What is this document about?"
-4. Нажмите Enter или кнопку отправки
-
-✅ AI ответит через 2-5 секунд
-
-**Возможности чата:**
-- Показывает время ответа (response time)
-- Сохраняет историю
-- Clear history кнопка
-- Shift+Enter для новой строки
-
-### Шаг 6: Проверьте Analytics
-
-1. Перейдите в **Analytics**
-2. Вы увидите:
-   - Total Documents
-   - Questions Asked
-   - Average Response Time
-   - Documents by Type (графики)
-   - Performance Insights
-
-### Шаг 7: Настройки
-
-1. Перейдите в **Settings**
-2. Измените:
-   - **Language:** English / Русский / Deutsch
-   - **AI Role:** Assistant / Analyst / Consultant
-   - **Response Style:** Brief / Standard / Detailed
-   - **AI Mode:** Fast / Standard / Advanced
-3. Нажмите **"Save Changes"**
-
-✅ Настройки сохранены!
-
-### Шаг 8: Проверьте Error Boundary
-
-Чтобы проверить Error Boundary (для разработчиков):
-
-1. Откройте DevTools (F12)
-2. В Console введите: `throw new Error("Test error")`
-3. Вы увидите красивую страницу ошибки с кнопками:
-   - **Try Again**
-   - **Reload Page**
-
----
-
-## 🎨 Основные функции
-
-### ✅ Реализовано
-
-#### Backend API
-- ✅ JWT Authentication (register, login, refresh, /me)
-- ✅ Document upload (max 50MB, multiple formats)
-- ✅ AI Chat with Gemini API
-- ✅ Analytics endpoints
-- ✅ Settings management
-- ✅ File validation
-- ✅ Error handling
-- ✅ OpenAPI docs
-
-#### Frontend Web App
-- ✅ Login/Register forms
-- ✅ Dashboard with stats
-- ✅ Documents page (upload, delete, activate)
-- ✅ Chat page with real AI
-- ✅ Analytics page with charts
-- ✅ Settings page
-- ✅ Error Boundary
-- ✅ Notifications (Snackbar)
-- ✅ Loading states
-- ✅ Responsive design
-
-### 🔄 Не реализовано (еще)
-- ⏳ WebSocket real-time chat
-- ⏳ Document preview
-- ⏳ Export functionality
-- ⏳ Search & filters
-- ⏳ Premium payment integration
-- ⏳ Unit tests
-- ⏳ E2E tests
-
----
-
-## 📱 Доступные страницы
-
-### 1. **Dashboard** (`/dashboard`)
-- Статистика пользователя
-- Quick actions
-- Recent documents
-- Premium upgrade banner
-
-### 2. **Documents** (`/documents`)
-- Загрузка файлов
-- Список документов
-- Удаление документов
-- Активация документов
-
-### 3. **Chat** (`/chat`)
-- AI чат с Gemini
-- История сообщений
-- Response time tracking
-- Clear history
-
-### 4. **Analytics** (`/analytics`)
-- Total statistics
-- Documents by type
-- Performance insights
-- Speed ratings
-
-### 5. **Settings** (`/settings`)
-- Profile info
-- Language selection
-- AI configuration
-- Notifications toggle
-
-### 6. **Premium** (`/premium`)
-- Premium plans
-- Feature comparison
-- Upgrade options
-
----
-
-## 🐛 Troubleshooting
-
-### Backend не запускается
-
-**Проблема:** `ModuleNotFoundError: No module named 'fastapi'`
-
-**Решение:**
-```bash
-pip install fastapi uvicorn sqlalchemy psycopg2-binary python-jose passlib bcrypt python-multipart google-generativeai
+**Вы должны увидеть:**
+```
+✅ Бот успешно запущен!
+Бот готов к работе. Нажмите Ctrl+C для остановки.
 ```
 
----
+### 3. Протестировать в Telegram
 
-**Проблема:** `Connection to database failed`
-
-**Решение:**
-1. Проверьте, что PostgreSQL запущен
-2. Проверьте DATABASE_URL в `.env`
-3. Создайте базу данных: `CREATE DATABASE ai_business_assistant;`
+1. Найдите вашего бота в Telegram
+2. Отправьте `/start`
+3. Бот должен ответить приветствием!
 
 ---
 
-**Проблема:** `GEMINI_API_KEY not found`
+## 🌐 Запуск Web приложения (опционально)
 
-**Решение:**
-1. Получите API key на https://makersuite.google.com/app/apikey
-2. Добавьте в `.env`: `GEMINI_API_KEY=your-key-here`
+### 1. Установить зависимости Node.js
 
----
-
-### Frontend не запускается
-
-**Проблема:** `Cannot find module '@/store'`
-
-**Решение:**
-```bash
+```powershell
 cd web-app
 npm install
+```
+
+**Проигнорируйте предупреждения (warnings) - это нормально!**
+
+### 2. Запустить в режиме разработки
+
+```powershell
 npm run dev
 ```
 
+### 3. Открыть в браузере
+
+Откройте: http://localhost:5173
+
+**Вы должны увидеть:**
+- Страницу входа
+- Можно зарегистрироваться и войти
+
 ---
 
-**Проблема:** `CORS error`
+## ✅ Проверка что всё работает
+
+### Telegram бот:
+
+1. **Отправьте `/start`** - должно прийти приветствие
+2. **Отправьте PDF файл** - должен обработаться
+3. **Задайте вопрос** - AI должен ответить
+
+### Web приложение:
+
+1. **Регистрация** - создайте аккаунт
+2. **Загрузка документа** - загрузите файл
+3. **Chat** - задайте вопрос по документу
+
+### Проверка сервисов:
+
+```powershell
+# PostgreSQL
+psql -U ai_bot_user -d ai_bot_db -c "SELECT 1;"
+
+# Redis
+redis-cli ping
+# Должен вернуть: PONG
+```
+
+---
+
+## 🐛 Решение проблем
+
+### ❌ Ошибка: "столбец users.email не существует"
 
 **Решение:**
-Убедитесь что API разрешает `http://localhost:5173` в CORS origins (уже настроено в `api/main.py`)
+```powershell
+python upgrade_db.py
+```
+
+### ❌ Ошибка: "connection to server failed"
+
+**PostgreSQL не запущен:**
+```powershell
+# Docker
+docker-compose up -d
+
+# Или запустите PostgreSQL вручную
+```
+
+### ❌ Ошибка: "python-magic"
+
+**Это НЕ ошибка!** Просто предупреждение. Бот будет работать.
+
+Если хотите убрать предупреждение:
+```powershell
+pip install python-magic-bin
+```
+
+### ❌ Ошибка: "No module named 'xxx'"
+
+**Не установлены зависимости:**
+```powershell
+pip install -r requirements.txt
+```
+
+### ❌ Telegram бот не отвечает
+
+**Проверьте:**
+1. Токен бота правильный в `.env`
+2. Бот запущен (`python main.py`)
+3. В консоли нет ошибок
+
+### ❌ Web app не открывается
+
+**Проверьте:**
+1. API запущен (порт 8000):
+   ```powershell
+   # В отдельном терминале
+   cd api
+   python -m uvicorn main:app --reload
+   ```
+
+2. Frontend запущен (порт 5173):
+   ```powershell
+   cd web-app
+   npm run dev
+   ```
 
 ---
 
-**Проблема:** `401 Unauthorized`
+## 📊 Мониторинг
 
-**Решение:**
-1. Проверьте что вы залогинены
-2. Очистите localStorage: DevTools → Application → Local Storage → Clear
-3. Перелогиньтесь
+### Логи бота
 
----
-
-### Другие проблемы
-
-**API не отвечает:**
-```bash
-# Проверьте запущен ли API
-curl http://localhost:8000/health
-
-# Ожидаемый ответ:
-# {"status":"healthy","service":"AI Business Assistant API","version":"1.0.0"}
+```powershell
+# Логи в консоли в реальном времени
+# Просто смотрите вывод python main.py
 ```
 
-**Web App не загружается:**
-```bash
-# Проверьте порт 5173
-lsof -ti:5173
+### Статус сервисов
 
-# Если занят, убейте процесс:
-lsof -ti:5173 | xargs kill -9
+```powershell
+# PostgreSQL
+docker-compose ps
+
+# Redis
+redis-cli ping
+
+# API Health
+curl http://localhost:8000/api/health
 ```
 
-**Database проблемы:**
-```bash
-# Пересоздайте таблицы
-python -c "from database.database import drop_tables, create_tables; drop_tables(); create_tables()"
-```
+### Статистика кэша
 
----
+```powershell
+# Откройте в браузере
+http://localhost:8000/api/docs
 
-## 🔧 Полезные команды
-
-### Backend
-
-```bash
-# Запустить API
-./start_api.sh
-
-# Проверить здоровье API
-curl http://localhost:8000/health
-
-# Просмотреть логи API
-uvicorn api.main:app --reload --log-level debug
-
-# Создать миграцию Alembic (когда будет настроено)
-alembic revision --autogenerate -m "Description"
-alembic upgrade head
-```
-
-### Frontend
-
-```bash
-cd web-app
-
-# Запустить dev server
-npm run dev
-
-# Собрать для production
-npm run build
-
-# Просмотреть production build
-npm run preview
-
-# Проверить типы TypeScript
-npm run type-check
-
-# Форматировать код (если настроено)
-npm run format
-```
-
-### Git
-
-```bash
-# Посмотреть статус
-git status
-
-# Посмотреть изменения
-git diff
-
-# Коммит
-git add .
-git commit -m "Your message"
-
-# Пуш
-git push
+# Найдите endpoint: GET /api/chat/cache/stats
 ```
 
 ---
 
-## 📞 Поддержка
+## 🎓 Дополнительные команды
 
-Если у вас возникли проблемы:
+### База данных
 
-1. **Проверьте логи:**
-   - Backend: в терминале где запущен API
-   - Frontend: Browser DevTools → Console
+```powershell
+# Применить миграции
+python migrate.py upgrade
 
-2. **Проверьте документацию:**
-   - `API_README.md` - полная документация API
-   - `WEB_APP_README.md` - руководство по веб-приложению
-   - `WEB_APP_PROGRESS.md` - детальный прогресс
+# Откатить последнюю миграцию
+python migrate.py downgrade
 
-3. **Создайте Issue на GitHub:**
-   https://github.com/kandibobe/ai-business-asistant/issues
+# Показать историю
+python migrate.py history
 
----
+# Текущая версия
+python migrate.py current
+```
 
-## 🎯 Что дальше?
+### Тесты
 
-После успешного запуска и тестирования, вы можете:
+```powershell
+# Запустить все тесты
+pytest tests/ -v
 
-1. **Добавить больше документов**
-   - Попробуйте разные типы файлов (PDF, Excel, Word)
-   - Тестируйте большие файлы (до 50MB)
+# С покрытием
+pytest tests/ --cov
 
-2. **Задать больше вопросов AI**
-   - Экспериментируйте с разными типами вопросов
-   - Проверьте работу с активным документом
+# Только быстрые тесты
+pytest tests/unit/ -v
+```
 
-3. **Посмотреть аналитику**
-   - Следите как растет статистика
-   - Проверяйте response time
+### Celery (для фоновых задач)
 
-4. **Настроить под себя**
-   - Измените AI role и style
-   - Попробуйте разные языки
+```powershell
+# Windows (автоматически в solo mode)
+celery -A celery_app worker --loglevel=info -P solo
 
-5. **Продолжить разработку**
-   - Добавьте WebSocket
-   - Реализуйте preview документов
-   - Добавьте тесты
+# Linux/Mac
+celery -A celery_app worker --loglevel=info
+```
 
 ---
 
-## 📚 Дополнительные ресурсы
+## 📚 Что дальше?
 
-- **API Documentation:** http://localhost:8000/api/docs (когда API запущен)
-- **ReDoc:** http://localhost:8000/api/redoc
-- **GitHub Repo:** https://github.com/kandibobe/ai-business-asistant
+### Изучите документацию:
+
+1. **[TOP_10_IMPROVEMENTS.md](./TOP_10_IMPROVEMENTS.md)** - Все улучшения проекта
+2. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Production deployment
+3. **[SECURITY.md](./SECURITY.md)** - Безопасность
+4. **[SESSION_SUMMARY.md](./SESSION_SUMMARY.md)** - Полный отчет о проделанной работе
+
+### Попробуйте функции:
+
+- **Загрузите PDF** - бот извлечет текст
+- **Загрузите Excel** - автоматическая аналитика
+- **Загрузите аудио** - транскрибация (нужен OpenAI API key)
+- **Отправьте URL** - парсинг веб-страницы
+- **Задавайте вопросы** - AI ответит на основе документов
+
+### Настройте под себя:
+
+- Измените приветствие в `handlers/common_enhanced.py`
+- Добавьте свои команды в `main.py`
+- Настройте rate limiting в `middleware/rate_limiter.py`
 
 ---
 
-**Готово! Теперь у вас запущено и работает веб-приложение AI Business Assistant! 🎉**
+## 🆘 Получить помощь
 
-Удачи в разработке! 🚀
+### Проблемы с установкой?
+
+1. **Проверьте версию Python:**
+   ```powershell
+   python --version
+   # Должно быть 3.10 или выше
+   ```
+
+2. **Проверьте .env файл:**
+   ```powershell
+   type .env
+   # Убедитесь что все ключи заполнены
+   ```
+
+3. **Проверьте БД:**
+   ```powershell
+   python upgrade_db.py
+   ```
+
+### Всё ещё не работает?
+
+- Создайте issue на GitHub
+- Приложите лог ошибки
+- Укажите версию Python и ОС
+
+---
+
+## ✨ Поздравляю!
+
+**Ваш AI Business Assistant готов к работе!** 🎉
+
+### Что вы получили:
+
+✅ Telegram бот с AI аналитикой
+✅ Web приложение с React
+✅ REST API на FastAPI
+✅ База данных PostgreSQL
+✅ Кэширование с Redis
+✅ Безопасность и валидация
+✅ Автоматические тесты
+✅ Production-ready код
+
+### Следующие шаги:
+
+1. **Протестируйте все функции** - загрузите разные типы файлов
+2. **Настройте под себя** - измените приветствия, добавьте команды
+3. **Деплой в production** - следуйте [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+**Удачи! 🚀**
+
+---
+
+**Создано с ❤️ для эффективной бизнес-аналитики**
