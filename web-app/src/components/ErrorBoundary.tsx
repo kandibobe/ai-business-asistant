@@ -1,13 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Paper,
-  Alert,
-} from '@mui/material'
-import { ErrorOutline, Refresh } from '@mui/icons-material'
+import { Box, Typography, Button, Paper } from '@mui/material'
+import { Error as ErrorIcon, Refresh } from '@mui/icons-material'
 
 interface Props {
   children: ReactNode
@@ -20,6 +13,10 @@ interface State {
   errorInfo: ErrorInfo | null
 }
 
+/**
+ * Error Boundary Component
+ * Catches JavaScript errors anywhere in the child component tree
+ */
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
@@ -30,24 +27,30 @@ class ErrorBoundary extends Component<Props, State> {
     }
   }
 
-  static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true, error }
+  static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI
+    return {
+      hasError: true,
+      error,
+      errorInfo: null,
+    }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console in development
-    console.error('Error caught by ErrorBoundary:', error, errorInfo)
+    // Log error to console
+    console.error('ErrorBoundary caught an error:', error, errorInfo)
 
-    // Update state with error details
+    // You can also log the error to an error reporting service here
+    // Example: Sentry.captureException(error, { extra: errorInfo })
+
     this.setState({
       error,
       errorInfo,
     })
+  }
 
-    // TODO: Send error to monitoring service (e.g., Sentry)
-    // if (process.env.VITE_SENTRY_DSN) {
-    //   Sentry.captureException(error, { extra: errorInfo })
-    // }
+  handleReload = () => {
+    window.location.reload()
   }
 
   handleReset = () => {
@@ -56,89 +59,89 @@ class ErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
     })
-    // Reload the page to reset application state
-    window.location.reload()
-  }
-
-  handleGoBack = () => {
-    window.history.back()
   }
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback UI provided
+      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback
       }
 
-      // Default error UI
+      // Default fallback UI
       return (
-        <Container maxWidth="md" sx={{ mt: 8 }}>
-          <Paper elevation={3} sx={{ p: 4 }}>
-            <Box
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            p: 3,
+            backgroundColor: 'background.default',
+          }}
+        >
+          <Paper
+            sx={{
+              maxWidth: 600,
+              p: 4,
+              textAlign: 'center',
+            }}
+          >
+            <ErrorIcon
               sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
+                fontSize: 80,
+                color: 'error.main',
+                mb: 2,
               }}
-            >
-              <ErrorOutline
-                sx={{ fontSize: 80, color: 'error.main', mb: 2 }}
-              />
+            />
+            <Typography variant="h4" fontWeight={700} gutterBottom>
+              Oops! Something went wrong
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              We're sorry for the inconvenience. An unexpected error has occurred.
+            </Typography>
 
-              <Typography variant="h4" fontWeight={700} gutterBottom>
-                Oops! Something went wrong
-              </Typography>
-
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                We encountered an unexpected error. Don't worry, your data is safe.
-              </Typography>
-
-              {this.state.error && (
-                <Alert severity="error" sx={{ mb: 3, width: '100%' }}>
-                  <Typography variant="body2" fontWeight={600}>
-                    Error: {this.state.error.toString()}
-                  </Typography>
-                  {process.env.NODE_ENV === 'development' && (
-                    <Typography
-                      variant="caption"
-                      component="pre"
-                      sx={{
-                        mt: 1,
-                        whiteSpace: 'pre-wrap',
-                        fontSize: '0.7rem',
-                      }}
-                    >
-                      {this.state.errorInfo?.componentStack}
-                    </Typography>
-                  )}
-                </Alert>
-              )}
-
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<Refresh />}
-                  onClick={this.handleReset}
-                >
-                  Reload Page
-                </Button>
-                <Button variant="outlined" onClick={this.handleGoBack}>
-                  Go Back
-                </Button>
-              </Box>
-
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mt: 3 }}
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <Box
+                sx={{
+                  textAlign: 'left',
+                  mb: 3,
+                  p: 2,
+                  backgroundColor: 'grey.100',
+                  borderRadius: 1,
+                  overflow: 'auto',
+                  maxHeight: 200,
+                }}
               >
-                If this problem persists, please contact support
-              </Typography>
+                <Typography variant="caption" component="pre" sx={{ fontSize: 11 }}>
+                  {this.state.error.toString()}
+                  {this.state.errorInfo && (
+                    <>
+                      {'\n\n'}
+                      {this.state.errorInfo.componentStack}
+                    </>
+                  )}
+                </Typography>
+              </Box>
+            )}
+
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={this.handleReset}
+              >
+                Try Again
+              </Button>
+              <Button
+                variant="contained"
+                onClick={this.handleReload}
+              >
+                Reload Page
+              </Button>
             </Box>
           </Paper>
-        </Container>
+        </Box>
       )
     }
 

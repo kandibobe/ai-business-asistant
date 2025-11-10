@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from './store'
+import ErrorBoundary from './components/ErrorBoundary'
 import MainLayout from './components/layout/MainLayout'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoginPage from './pages/LoginPage'
