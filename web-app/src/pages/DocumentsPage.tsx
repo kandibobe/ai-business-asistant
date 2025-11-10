@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Box,
   Typography,
@@ -19,15 +19,54 @@ import {
   Link as LinkIcon,
   Delete,
   Visibility,
+  CheckCircle,
 } from '@mui/icons-material'
-import { useSelector } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
+import {
+  fetchDocumentsStart,
+  fetchDocumentsSuccess,
+  fetchDocumentsFailure,
+  uploadStart,
+  uploadProgress as setUploadProgress,
+  uploadSuccess,
+  uploadFailure,
+  setActiveDocument,
+  deleteDocument as deleteDocumentAction,
+} from '@/store/slices/documentsSlice'
+import { showSnackbar } from '@/store/slices/uiSlice'
+import { documentsApi } from '@/api/services'
 
 export default function DocumentsPage() {
-  const { documents, isUploading, uploadProgress } = useSelector(
+  const dispatch = useDispatch()
+  const { documents, isUploading, uploadProgress, activeDocument } = useSelector(
     (state: RootState) => state.documents
   )
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+
+  useEffect(() => {
+    loadDocuments()
+  }, [])
+
+  const loadDocuments = async () => {
+    try {
+      dispatch(fetchDocumentsStart())
+      const response = await documentsApi.list()
+      dispatch(fetchDocumentsSuccess(response.documents))
+
+      // Set active document if exists
+      if (response.active_document_id) {
+        const activeDoc = response.documents.find(
+          (doc) => doc.id === response.active_document_id
+        )
+        if (activeDoc) {
+          dispatch(setActiveDocument(activeDoc))
+        }
+      }
+    } catch (error: any) {
+      dispatch(fetchDocumentsFailure(error.message))
+    }
+  }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -37,8 +76,80 @@ export default function DocumentsPage() {
 
   const handleUpload = async () => {
     if (!selectedFile) return
-    // TODO: Implement upload logic
-    console.log('Uploading:', selectedFile)
+
+    try {
+      dispatch(uploadStart())
+      const document = await documentsApi.upload(selectedFile, (progress) => {
+        dispatch(setUploadProgress(progress))
+      })
+
+      dispatch(uploadSuccess(document))
+      dispatch(
+        showSnackbar({
+          message: 'Document uploaded successfully!',
+          severity: 'success',
+        })
+      )
+      setSelectedFile(null)
+
+      // Reload documents to get updated list
+      loadDocuments()
+    } catch (error: any) {
+      dispatch(uploadFailure(error.message))
+      dispatch(
+        showSnackbar({
+          message: `Upload failed: ${error.message}`,
+          severity: 'error',
+        })
+      )
+    }
+  }
+
+  const handleActivate = async (documentId: number) => {
+    try {
+      await documentsApi.activate(documentId)
+      const doc = documents.find((d) => d.id === documentId)
+      if (doc) {
+        dispatch(setActiveDocument(doc))
+        dispatch(
+          showSnackbar({
+            message: 'Document activated',
+            severity: 'success',
+          })
+        )
+      }
+    } catch (error: any) {
+      dispatch(
+        showSnackbar({
+          message: `Failed to activate: ${error.message}`,
+          severity: 'error',
+        })
+      )
+    }
+  }
+
+  const handleDelete = async (documentId: number) => {
+    if (!confirm('Are you sure you want to delete this document?')) {
+      return
+    }
+
+    try {
+      await documentsApi.delete(documentId)
+      dispatch(deleteDocumentAction(documentId))
+      dispatch(
+        showSnackbar({
+          message: 'Document deleted',
+          severity: 'success',
+        })
+      )
+    } catch (error: any) {
+      dispatch(
+        showSnackbar({
+          message: `Failed to delete: ${error.message}`,
+          severity: 'error',
+        })
+      )
+    }
   }
 
   const getDocumentIcon = (type: string) => {
@@ -145,7 +256,12 @@ export default function DocumentsPage() {
         ) : (
           documents.map((doc) => (
             <Grid item xs={12} sm={6} md={4} key={doc.id}>
-              <Card>
+              <Card
+                sx={{
+                  border: activeDocument?.id === doc.id ? 2 : 0,
+                  borderColor: 'success.main',
+                }}
+              >
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ color: 'primary.main', mr: 2 }}>
@@ -154,17 +270,39 @@ export default function DocumentsPage() {
                     <Typography variant="h6" sx={{ flex: 1 }} noWrap>
                       {doc.file_name}
                     </Typography>
+                    {activeDocument?.id === doc.id && (
+                      <CheckCircle color="success" fontSize="small" />
+                    )}
                   </Box>
-                  <Chip
-                    label={doc.document_type.toUpperCase()}
-                    size="small"
-                    sx={{ mb: 2 }}
-                  />
+                  <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+                    <Chip
+                      label={doc.document_type.toUpperCase()}
+                      size="small"
+                    />
+                    {activeDocument?.id === doc.id && (
+                      <Chip
+                        label="ACTIVE"
+                        size="small"
+                        color="success"
+                      />
+                    )}
+                  </Box>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton size="small" color="primary">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => handleActivate(doc.id)}
+                      disabled={activeDocument?.id === doc.id}
+                      title="Set as active for chat"
+                    >
                       <Visibility />
                     </IconButton>
-                    <IconButton size="small" color="error">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDelete(doc.id)}
+                      title="Delete document"
+                    >
                       <Delete />
                     </IconButton>
                   </Box>

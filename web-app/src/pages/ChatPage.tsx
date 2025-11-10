@@ -17,12 +17,15 @@ import {
 } from '@mui/icons-material'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
-import { addMessage, sendMessageStart, clearMessages } from '@/store/slices/chatSlice'
+import { addMessage, sendMessageStart, sendMessageSuccess, sendMessageFailure, clearMessages } from '@/store/slices/chatSlice'
+import { showSnackbar } from '@/store/slices/uiSlice'
+import { chatApi } from '@/api/services'
 
 export default function ChatPage() {
   const dispatch = useDispatch()
   const { messages, isLoading } = useSelector((state: RootState) => state.chat)
   const { user } = useSelector((state: RootState) => state.auth)
+  const { activeDocument } = useSelector((state: RootState) => state.documents)
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -37,6 +40,17 @@ export default function ChatPage() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
+    // Check if there's an active document
+    if (!activeDocument) {
+      dispatch(
+        showSnackbar({
+          message: 'Please upload and activate a document first',
+          severity: 'warning',
+        })
+      )
+      return
+    }
+
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
@@ -48,17 +62,27 @@ export default function ChatPage() {
     setInput('')
     dispatch(sendMessageStart())
 
-    // TODO: Implement actual API call
-    setTimeout(() => {
+    try {
+      const response = await chatApi.sendMessage(input, activeDocument.id)
+
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
-        content: 'This is a placeholder response. The AI backend will be connected soon.',
+        content: response.message,
         timestamp: new Date().toISOString(),
-        response_time: 1.2,
+        response_time: response.response_time_ms / 1000, // Convert to seconds
       }
-      dispatch(addMessage(aiMessage))
-    }, 1000)
+
+      dispatch(sendMessageSuccess(aiMessage))
+    } catch (error: any) {
+      dispatch(sendMessageFailure(error.message))
+      dispatch(
+        showSnackbar({
+          message: `AI error: ${error.message}`,
+          severity: 'error',
+        })
+      )
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

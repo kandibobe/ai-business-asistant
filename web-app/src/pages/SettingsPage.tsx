@@ -22,7 +22,10 @@ import {
   updateLanguage,
   saveSettingsStart,
   saveSettingsSuccess,
+  saveSettingsFailure,
 } from '@/store/slices/settingsSlice'
+import { showSnackbar } from '@/store/slices/uiSlice'
+import { settingsApi } from '@/api/services'
 
 export default function SettingsPage() {
   const dispatch = useDispatch()
@@ -46,11 +49,26 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     dispatch(saveSettingsStart())
-    // TODO: Implement actual API call
-    setTimeout(() => {
-      dispatch(saveSettingsSuccess(localSettings))
+
+    try {
+      const updatedSettings = await settingsApi.update(localSettings)
+      dispatch(saveSettingsSuccess(updatedSettings))
       setSaved(true)
-    }, 500)
+      dispatch(
+        showSnackbar({
+          message: 'Settings saved successfully!',
+          severity: 'success',
+        })
+      )
+    } catch (error: any) {
+      dispatch(saveSettingsFailure(error.message))
+      dispatch(
+        showSnackbar({
+          message: `Failed to save settings: ${error.message}`,
+          severity: 'error',
+        })
+      )
+    }
   }
 
   return (
