@@ -20,15 +20,17 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
-import apiClient from '@/api/client'
+import { analyticsService } from '@/api/services'
 
 interface DashboardStats {
   total_questions: number
   total_documents: number
   avg_response_time: number
-  total_chats: number
-  documents_processed_today: number
+  documents_today: number
   questions_today: number
+  activity_chart: Array<{ date: string; questions: number }>
+  recent_documents: Array<any>
+  is_premium: boolean
 }
 
 export default function DashboardPage() {
@@ -38,9 +40,11 @@ export default function DashboardPage() {
     total_questions: 0,
     total_documents: 0,
     avg_response_time: 0,
-    total_chats: 0,
-    documents_processed_today: 0,
+    documents_today: 0,
     questions_today: 0,
+    activity_chart: [],
+    recent_documents: [],
+    is_premium: false,
   })
   const [loading, setLoading] = useState(true)
 
@@ -50,8 +54,8 @@ export default function DashboardPage() {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await apiClient.get('/dashboard/stats')
-      setStats(response.data)
+      const response = await analyticsService.getDashboardStats()
+      setStats(response as any)
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error)
     } finally {
@@ -65,7 +69,7 @@ export default function DashboardPage() {
       value: stats.total_documents,
       icon: <Description sx={{ fontSize: 40 }} />,
       color: '#1976d2',
-      subtitle: `${stats.documents_processed_today} processed today`,
+      subtitle: `${stats.documents_today} uploaded today`,
     },
     {
       title: 'Questions Asked',
@@ -76,17 +80,17 @@ export default function DashboardPage() {
     },
     {
       title: 'Avg Response Time',
-      value: `${stats.avg_response_time.toFixed(2)}s`,
+      value: stats.avg_response_time ? `${stats.avg_response_time.toFixed(2)}s` : '0s',
       icon: <Speed sx={{ fontSize: 40 }} />,
       color: '#ed6c02',
-      subtitle: 'Last 100 queries',
+      subtitle: 'Average AI response',
     },
     {
-      title: 'Chat Sessions',
-      value: stats.total_chats,
+      title: 'Recent Documents',
+      value: stats.recent_documents.length,
       icon: <PsychologyAlt sx={{ fontSize: 40 }} />,
       color: '#9c27b0',
-      subtitle: 'Total conversations',
+      subtitle: 'Last uploaded',
     },
   ]
 
@@ -194,12 +198,38 @@ export default function DashboardPage() {
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight={600} gutterBottom>
-                Recent Activity
+                Recent Documents
               </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  No recent activity to display
-                </Typography>
+              <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {stats.recent_documents.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No documents uploaded yet
+                  </Typography>
+                ) : (
+                  stats.recent_documents.map((doc) => (
+                    <Box
+                      key={doc.id}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        p: 1,
+                        borderRadius: 1,
+                        '&:hover': { backgroundColor: 'action.hover' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Description color="primary" />
+                        <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                          {doc.file_name}
+                        </Typography>
+                      </Box>
+                      {doc.is_active && (
+                        <Chip label="Active" size="small" color="primary" />
+                      )}
+                    </Box>
+                  ))
+                )}
               </Box>
             </CardContent>
           </Card>
