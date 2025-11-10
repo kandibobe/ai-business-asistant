@@ -28,9 +28,17 @@ __all__ = [
 ]
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
+# Allow tests to run without TELEGRAM_BOT_TOKEN
 if not TELEGRAM_BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN не найден в .env файле!")
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+    if os.getenv('TESTING') == 'true':
+        # Create a dummy bot for tests
+        from unittest.mock import MagicMock
+        bot = MagicMock()
+    else:
+        raise ValueError("TELEGRAM_BOT_TOKEN не найден в .env файле!")
+else:
+    bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 def get_post_analysis_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура, отправляемая после успешного анализа."""

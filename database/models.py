@@ -30,15 +30,25 @@ class User(Base):
     notifications_enabled = Column(String, default='true', nullable=True)  # Уведомления (true/false как строка)
     auto_analysis_enabled = Column(String, default='false', nullable=True)  # Авто-анализ документов
 
-    # Связь "один ко многим": один пользователь может иметь много документов
-    documents = relationship("Document", back_populates="owner", cascade="all, delete-orphan")
-
-    # +++ НАЧАЛО НОВОГО КОДА +++
     # ID документа, который пользователь выбрал как активный
     active_document_id = Column(Integer, ForeignKey('documents.id'), nullable=True)
-    
+
+    # Связь "один ко многим": один пользователь может иметь много документов
+    # Явно указываем foreign_keys чтобы избежать неоднозначности
+    documents = relationship(
+        "Document",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        foreign_keys="[Document.user_id]"
+    )
+
     # Создаем "виртуальное" поле для удобного доступа к активному документу
-    active_document = relationship("Document", foreign_keys=[active_document_id])
+    # Явно указываем foreign_keys чтобы избежать неоднозначности
+    active_document = relationship(
+        "Document",
+        foreign_keys=[active_document_id],
+        post_update=True  # Важно для избежания циклических зависимостей
+    )
     # +++ КОНЕЦ НОВОГО КОДА +++
 
     def __repr__(self):
