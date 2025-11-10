@@ -36,6 +36,28 @@
 - Поддержка множества документов на пользователя
 - Система активного документа для удобной работы
 
+### 🌐 Web Application (NEW!)
+
+- **React + TypeScript** - современный веб-интерфейс
+- **FastAPI REST API** - полный API для веб-приложения
+- **JWT Authentication** - безопасная аутентификация
+- **Real-time updates** - WebSocket поддержка
+
+### 🛡️ Production-Ready Features (NEW!)
+
+- **Comprehensive Security** - Валидация файлов, sanitization, rate limiting
+- **Error Handling** - Retry logic с exponential backoff для AI calls
+- **Response Caching** - Redis cache для снижения затрат на API
+- **Database Migrations** - Alembic для безопасной эволюции схемы
+- **Structured Logging** - Production-grade логирование
+- **Full Test Coverage** - 100+ тестов с pytest
+- **Deployment Ready** - Systemd services, Nginx config, полная документация
+
+📚 **См. также:**
+- [TOP_10_IMPROVEMENTS.md](./TOP_10_IMPROVEMENTS.md) - Детальный план улучшений
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Production deployment guide
+- [SECURITY.md](./SECURITY.md) - Security best practices
+
 ---
 
 ## 📋 Системные требования

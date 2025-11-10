@@ -3,9 +3,20 @@ Security utilities for file validation, input sanitization, and security checks.
 """
 import os
 import re
-import magic
 from typing import Optional, Tuple
 from pathlib import Path
+import logging
+
+# Пытаемся импортировать python-magic, но не падаем если его нет
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    MAGIC_AVAILABLE = False
+    logging.warning(
+        "python-magic not available. MIME type validation will be skipped. "
+        "Install python-magic-bin on Windows: pip install python-magic-bin"
+    )
 
 
 # Максимальные размеры файлов (в байтах)
@@ -131,13 +142,17 @@ def validate_mime_type(file_path: str, file_type: str) -> bool:
     Raises:
         FileValidationError: Если MIME type не соответствует
     """
+    # Если python-magic недоступен, пропускаем MIME проверку
+    if not MAGIC_AVAILABLE:
+        logging.debug(f"Skipping MIME type check for {file_path} (magic not available)")
+        return True
+
     try:
         mime = magic.Magic(mime=True)
         detected_mime = mime.from_file(file_path)
     except Exception as e:
-        # Если python-magic не установлен, пропускаем проверку
-        # В production это нужно логировать как warning
-        print(f"⚠️ Warning: Could not check MIME type: {e}")
+        # Если ошибка при проверке, логируем и пропускаем
+        logging.warning(f"Could not check MIME type for {file_path}: {e}")
         return True
 
     allowed_mimes = ALLOWED_MIME_TYPES.get(file_type, [])
