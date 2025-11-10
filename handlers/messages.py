@@ -12,9 +12,24 @@ from database import crud
 from ui import get_main_menu_keyboard
 from tasks import scrape_url_task
 
+# Импортируем систему безопасности
+from utils.security import sanitize_text_input, validate_url, SecurityError
+from middleware.rate_limiter import rate_limit
+
+@rate_limit('ai_requests')
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gemini_model: genai.GenerativeModel):
     user = update.effective_user
     question = update.message.text
+
+    # БЕЗОПАСНОСТЬ: Санитизация входного текста
+    try:
+        question = sanitize_text_input(question, max_length=5000)
+    except SecurityError as e:
+        await update.message.reply_text(
+            f"⚠️ Обнаружены потенциально опасные паттерны в вашем сообщении.\n\n"
+            f"Пожалуйста, перефразируйте вопрос и попробуйте снова."
+        )
+        return
 
     # === PRIORITY 1: Developer Tools Input ===
     # Check if input is expected for developer tools
@@ -39,10 +54,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE, gem
     if urls:
         # If URL found, start scraping
         url = urls[0]  # Take the first URL found
+
+        # БЕЗОПАСНОСТЬ: Валидация URL
+        is_valid, error_msg = validate_url(url)
+        if not is_valid:
+            await update.message.reply_text(
+                f"❌ Недопустимый URL: {error_msg}\n\n"
+                f"URL: {url}\n\n"
+                "Пожалуйста, убедитесь, что URL начинается с http:// или https:// "
+                "и не ссылается на локальные ресурсы."
+            )
+            return
+
         await update.message.reply_text(
-            f"🌐 URL detected!\n\n"
-            f"Starting web page analysis: {url}\n"
-            f"This may take some time... Will notify when ready."
+            f"🌐 URL обнаружен!\n\n"
+            f"Начинаю анализ веб-страницы: {url}\n"
+            f"Это может занять некоторое время... Уведомлю когда будет готово."
         )
 
         scrape_url_task.delay(
