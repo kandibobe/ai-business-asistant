@@ -8,14 +8,25 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 import time
+import logging
 
 load_dotenv()
 
 from api.dependencies import get_db, get_current_user
 from utils.validators import ChatMessage, ChatResponse
+from utils.ai_helpers import (
+    generate_ai_response,
+    safe_get_text,
+    truncate_context,
+    AIServiceError,
+    AIRateLimitError,
+    AIQuotaError,
+)
 from database import crud
 from database.models import User
 from config import GEMINI_MODEL_NAME
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -64,6 +75,9 @@ async def send_message(
             detail="No active document. Please upload and activate a document first."
         )
 
+    # Truncate context if too long to avoid token limits
+    document_content = truncate_context(document.content or "", max_tokens=30000)
+
     # Build prompt
     prompt = f"""
     You are a business analytics expert. Analyze the document text provided below and answer the user's question.
@@ -71,29 +85,70 @@ async def send_message(
     Do not make up anything that is not in the text.
 
     --- DOCUMENT TEXT ---
-    {document.content}
+    {document_content}
     --- END OF DOCUMENT TEXT ---
 
     USER'S QUESTION:
     "{message.message}"
     """
 
-    # Call AI
+    # Call AI with retry logic
     start_time = time.time()
     try:
-        response = gemini_model.generate_content(prompt)
+        logger.info(f"Sending message to AI for user {current_user.user_id}")
+        response = generate_ai_response(gemini_model, prompt)
         response_time_ms = int((time.time() - start_time) * 1000)
 
+        # Safely extract text
+        response_text = safe_get_text(response)
+        if not response_text:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="AI did not generate a valid response"
+            )
+
+        logger.info(f"AI response generated in {response_time_ms}ms")
+
         return {
-            "message": response.text,
+            "message": response_text,
             "response_time_ms": response_time_ms,
             "cached": False,
             "tokens_used": None
         }
-    except Exception as e:
+
+    except AIRateLimitError as e:
+        logger.error(f"AI rate limit exceeded: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="AI service rate limit exceeded. Please try again in a few moments."
+        )
+
+    except AIQuotaError as e:
+        logger.error(f"AI quota exceeded: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service quota exceeded. Please contact support."
+        )
+
+    except AIServiceError as e:
+        logger.error(f"AI service error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"AI error: {str(e)}"
+            detail=f"AI service error: {str(e)}"
+        )
+
+    except (ConnectionError, TimeoutError) as e:
+        logger.error(f"Network error after retries: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service temporarily unavailable. Please try again."
+        )
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in AI chat: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}"
         )
 
 

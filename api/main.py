@@ -14,11 +14,13 @@ load_dotenv()
 
 from api.routes import auth, documents, chat, analytics, settings, tools
 from api.middleware.error_handler import log_exception
+from utils.logger import setup_logging
 
-# Logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+# Setup structured logging
+setup_logging(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    log_file=os.getenv("LOG_FILE"),
+    json_logs=os.getenv("JSON_LOGS", "false").lower() == "true"
 )
 logger = logging.getLogger(__name__)
 
