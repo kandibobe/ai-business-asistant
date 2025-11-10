@@ -15,21 +15,31 @@ DB_USER = os.getenv("DB_USER")
 DB_PASS = os.getenv("DB_PASS")
 DB_NAME = os.getenv("DB_NAME")
 
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Use SQLite for testing if DB config is not set
+if not all([DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME]) or os.getenv("TESTING") == "true":
+    # In-memory SQLite for tests
+    DATABASE_URL = "sqlite:///:memory:"
+    engine = create_engine(
+        DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False}  # Needed for SQLite
+    )
+else:
+    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# echo=False, чтобы не выводить все SQL-запросы в консоль
-# Added connection timeout and pool settings for better reliability
-engine = create_engine(
-    DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_size=5,         # Connection pool size
-    max_overflow=10,     # Max overflow connections
-    connect_args={
-        "connect_timeout": 10,  # 10 second connection timeout
-        "options": "-c statement_timeout=30000"  # 30 second query timeout
-    }
-)
+    # echo=False, чтобы не выводить все SQL-запросы в консоль
+    # Added connection timeout and pool settings for better reliability
+    engine = create_engine(
+        DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,  # Verify connections before using
+        pool_size=5,         # Connection pool size
+        max_overflow=10,     # Max overflow connections
+        connect_args={
+            "connect_timeout": 10,  # 10 second connection timeout
+            "options": "-c statement_timeout=30000"  # 30 second query timeout
+        }
+    )
 
 # "Фабрика" для создания сессий подключения к БД
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
