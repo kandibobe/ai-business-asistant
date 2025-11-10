@@ -1,0 +1,43 @@
+# Coverage.py configuration file
+
+[run]
+source = .
+omit =
+    tests/*
+    venv/*
+    .venv/*
+    */site-packages/*
+    */migrations/*
+    */alembic/*
+    setup.py
+    */conftest.py
+    */__pycache__/*
+    */test_*.py
+    web-app/*
+    node_modules/*
+
+branch = True
+parallel = True
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+    except ImportError:
+    @overload
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
