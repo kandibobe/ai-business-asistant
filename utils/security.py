@@ -215,8 +215,9 @@ def sanitize_text_input(text: str, max_length: int = 10000) -> str:
         r"(\bINSERT\b.*\bINTO\b)",
         r"(\bDELETE\b.*\bFROM\b)",
         r"(;\s*DROP\b)",
-        r"(--\s*$)",
+        r"(--)",  # SQL comment marker
         r"(/\*.*\*/)",
+        r"('.*OR.*'.*=.*')",  # OR-based injection like 1' OR '1'='1
     ]
 
     for pattern in sql_patterns:
@@ -247,6 +248,10 @@ def validate_url(url: str) -> Tuple[bool, str]:
     Returns:
         (is_valid, error_message)
     """
+    # Блокируем опасные схемы (проверяем первым делом)
+    if url.startswith(('file://', 'ftp://', 'data:')):
+        return False, "URL scheme not allowed"
+
     # Базовая проверка формата
     url_pattern = re.compile(
         r'^https?://'  # http:// или https://
@@ -259,10 +264,6 @@ def validate_url(url: str) -> Tuple[bool, str]:
 
     if not url_pattern.match(url):
         return False, "Invalid URL format"
-
-    # Блокируем опасные схемы
-    if url.startswith(('file://', 'ftp://', 'data:')):
-        return False, "URL scheme not allowed"
 
     # Блокируем localhost и internal IPs для production
     localhost_patterns = [
@@ -345,11 +346,12 @@ def get_safe_file_path(base_dir: str, user_id: int, filename: str) -> str:
     # Санитизация имени файла
     safe_filename = sanitize_filename(filename)
 
-    # Создаем уникальное имя с timestamp
+    # Создаем уникальное имя с timestamp (включая микросекунды для уникальности)
     import time
-    timestamp = int(time.time())
+    timestamp = time.time()  # Включает микросекунды
+    timestamp_str = f"{int(timestamp)}_{int((timestamp % 1) * 1000000)}"
     name, ext = os.path.splitext(safe_filename)
-    unique_filename = f"{user_id}_{timestamp}_{name}{ext}"
+    unique_filename = f"{user_id}_{timestamp_str}_{name}{ext}"
 
     # Создаем путь
     user_dir = os.path.join(base_dir, str(user_id))
