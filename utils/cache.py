@@ -14,15 +14,28 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Redis connection
+# Redis connection with optimized pooling
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 try:
-    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+    # Create connection pool for better performance
+    redis_pool = redis.ConnectionPool.from_url(
+        REDIS_URL,
+        decode_responses=True,
+        max_connections=50,  # Max concurrent connections
+        socket_keepalive=True,  # Keep connections alive
+        socket_connect_timeout=5,  # 5 second connection timeout
+        socket_timeout=5,  # 5 second operation timeout
+        retry_on_timeout=True,  # Retry on timeout
+        health_check_interval=30,  # Check connection health every 30s
+    )
+
+    redis_client = redis.Redis(connection_pool=redis_pool)
     redis_client.ping()  # Test connection
-    logger.info(f"Connected to Redis at {REDIS_URL}")
+    logger.info(f"✅ Connected to Redis at {REDIS_URL} with connection pool (max: 50)")
 except Exception as e:
-    logger.warning(f"Redis connection failed: {e}. Caching will be disabled.")
+    logger.warning(f"⚠️ Redis connection failed: {e}. Caching will be disabled.")
     redis_client = None
+    redis_pool = None
 
 
 class AIResponseCache:

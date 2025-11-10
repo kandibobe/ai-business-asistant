@@ -2,6 +2,10 @@
 import os
 import logging
 import traceback
+import signal
+import sys
+import asyncio
+import time
 import google.generativeai as genai
 from dotenv import load_dotenv
 from functools import partial
@@ -15,14 +19,56 @@ from handlers.documents import handle_document
 from handlers.messages import handle_message
 from handlers.reply_keyboard_handler import handle_reply_keyboard
 from audio import handle_audio
-from database.database import init_db
+from database.database import init_db, engine
 from migrate_language import migrate_language_field
+
+# Import monitoring and health check utilities
+from utils.metrics import metrics, track_startup_time
+from utils.health_check import health_checker
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Global application instance for graceful shutdown
+app_instance = None
+startup_start_time = None
+
+def graceful_shutdown(signum, frame):
+    """Handle graceful shutdown on SIGINT/SIGTERM."""
+    print("\n")
+    logger.info("=" * 60)
+    logger.info("🛑 Shutdown signal received. Cleaning up...")
+    logger.info("=" * 60)
+
+    try:
+        # Close database connections
+        if engine:
+            logger.info("   Closing database connections...")
+            engine.dispose()
+            logger.info("   ✅ Database connections closed")
+
+        # Close Redis connections
+        try:
+            from utils.cache import redis_client
+            if redis_client:
+                logger.info("   Closing Redis connections...")
+                redis_client.close()
+                logger.info("   ✅ Redis connections closed")
+        except Exception as e:
+            logger.warning(f"   ⚠️ Error closing Redis: {e}")
+
+        logger.info("=" * 60)
+        logger.info("✅ Cleanup complete. Goodbye!")
+        logger.info("=" * 60)
+
+    except Exception as e:
+        logger.error(f"❌ Error during cleanup: {e}")
+    finally:
+        sys.exit(0)
+
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Global error handler for all bot handlers."""
@@ -49,6 +95,15 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
         logger.error(f"❌ Failed to send error message to user: {e}")
 
 def main() -> None:
+    global app_instance, startup_start_time
+
+    # Track startup time
+    startup_start_time = time.time()
+
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, graceful_shutdown)
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+
     print("=" * 60)
     print("🤖 AI Business Assistant Starting...")
     print("=" * 60)
@@ -143,6 +198,21 @@ def main() -> None:
 
     print("\n" + "=" * 60)
     print("✅ Бот успешно запущен!")
+
+    # Track startup time
+    startup_duration_ms = (time.time() - startup_start_time) * 1000
+    track_startup_time(startup_duration_ms)
+    print(f"⏱️  Startup completed in {startup_duration_ms:.2f}ms")
+
+    # Run health check
+    print("\n🏥 Running health check...")
+    health_status = health_checker.get_full_status()
+    print(f"   Database: {health_status['services']['database']['status']}")
+    print(f"   Redis: {health_status['services']['redis']['status']}")
+    print(f"   AI Service: {health_status['services']['ai_service']['status']}")
+    print(f"   Overall: {health_status['status'].upper()}")
+
+    print("\n" + "=" * 60)
     print("Бот готов к работе. Нажмите Ctrl+C для остановки.")
     print("=" * 60 + "\n")
     logger.info("✅ Bot ready and starting polling...")

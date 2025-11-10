@@ -34,6 +34,28 @@ engine = create_engine(
 # "Фабрика" для создания сессий подключения к БД
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
+def get_db():
+    """
+    Context manager для database sessions.
+
+    Usage:
+        with get_db() as db:
+            user = crud.get_user(db, user_id)
+
+    Ensures sessions are properly closed even on exceptions.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()  # Auto-commit on success
+    except Exception:
+        db.rollback()  # Auto-rollback on error
+        raise
+    finally:
+        db.close()  # Always close
+
+
 def init_db():
     """
     Инициализирует базу данных, создавая все необходимые таблицы.
