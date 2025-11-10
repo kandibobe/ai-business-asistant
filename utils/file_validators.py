@@ -242,11 +242,12 @@ def sanitize_file_path(file_path: str) -> str:
     # Remove null bytes
     file_path = file_path.replace('\x00', '')
 
+    # Remove path traversal attempts BEFORE normalizing
+    # This prevents os.normpath from resolving malicious paths
+    file_path = file_path.replace('..', '')
+
     # Normalize path
     file_path = os.path.normpath(file_path)
-
-    # Remove path traversal attempts
-    file_path = file_path.replace('..', '')
 
     # Convert to forward slashes for cross-platform compatibility
     file_path = file_path.replace('\\', '/')

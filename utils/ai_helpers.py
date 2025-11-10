@@ -155,16 +155,18 @@ def generate_ai_response(
             # Classify errors
             if "rate limit" in error_str or "429" in error_str:
                 last_error = AIRateLimitError(f"AI rate limit exceeded: {str(e)}")
+                logger.warning(f"Rate limit error (attempt {attempt + 1}/{max_retries}): {str(e)}")
             elif "quota" in error_str or "403" in error_str:
                 last_error = AIQuotaError(f"AI quota exceeded: {str(e)}")
+                logger.warning(f"Quota error (attempt {attempt + 1}/{max_retries}): {str(e)}")
             elif is_retryable:
                 # Retryable error - log and continue
                 logger.warning(f"Retryable error (attempt {attempt + 1}/{max_retries}): {str(e)}")
                 last_error = e
             else:
-                # Permanent error, don't retry
-                logger.error(f"AI service error (non-retryable): {str(e)}")
-                raise AIServiceError(f"AI service error: {str(e)}")
+                # Non-retryable pattern, but still retry max_retries times
+                logger.warning(f"Error (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                last_error = AIServiceError(f"AI service error: {str(e)}")
 
             # Retry if not last attempt
             if attempt < max_retries - 1:

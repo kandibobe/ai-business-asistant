@@ -23,15 +23,20 @@ class TestDocumentHandlers:
         temp_directory
     ):
         """Test successful PDF document upload."""
+        import shutil
+
         # Setup
         mock_telegram_update.message.document = MagicMock()
         mock_telegram_update.message.document.file_id = 'test_file_123'
         mock_telegram_update.message.document.file_name = 'test.pdf'
         mock_telegram_update.message.document.file_size = 1024
 
-        # Mock telegram file download
+        # Mock telegram file download - actually copy the file
+        async def mock_download(file_path):
+            shutil.copy(sample_pdf_file, file_path)
+
         mock_file = AsyncMock()
-        mock_file.download_to_drive = AsyncMock()
+        mock_file.download_to_drive = AsyncMock(side_effect=mock_download)
         mock_telegram_context.bot.get_file = AsyncMock(return_value=mock_file)
 
         # Mock celery task
@@ -54,16 +59,23 @@ class TestDocumentHandlers:
         self,
         mock_telegram_update,
         mock_telegram_context,
+        sample_excel_file,
         mock_redis_client
     ):
         """Test Excel document upload."""
+        import shutil
+
         mock_telegram_update.message.document = MagicMock()
         mock_telegram_update.message.document.file_id = 'excel_123'
         mock_telegram_update.message.document.file_name = 'spreadsheet.xlsx'
         mock_telegram_update.message.document.file_size = 2048
 
+        # Mock telegram file download - actually copy the file
+        async def mock_download(file_path):
+            shutil.copy(sample_excel_file, file_path)
+
         mock_file = AsyncMock()
-        mock_file.download_to_drive = AsyncMock()
+        mock_file.download_to_drive = AsyncMock(side_effect=mock_download)
         mock_telegram_context.bot.get_file = AsyncMock(return_value=mock_file)
 
         with patch('handlers.documents.process_excel_task') as mock_task:
@@ -80,16 +92,23 @@ class TestDocumentHandlers:
         self,
         mock_telegram_update,
         mock_telegram_context,
+        sample_word_file,
         mock_redis_client
     ):
         """Test Word document upload."""
+        import shutil
+
         mock_telegram_update.message.document = MagicMock()
         mock_telegram_update.message.document.file_id = 'word_123'
         mock_telegram_update.message.document.file_name = 'document.docx'
         mock_telegram_update.message.document.file_size = 3072
 
+        # Mock telegram file download - actually copy the file
+        async def mock_download(file_path):
+            shutil.copy(sample_word_file, file_path)
+
         mock_file = AsyncMock()
-        mock_file.download_to_drive = AsyncMock()
+        mock_file.download_to_drive = AsyncMock(side_effect=mock_download)
         mock_telegram_context.bot.get_file = AsyncMock(return_value=mock_file)
 
         with patch('handlers.documents.process_word_task') as mock_task:
