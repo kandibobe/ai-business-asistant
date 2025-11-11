@@ -83,7 +83,7 @@ class Document(Base):
 
     # Временные метки
     uploaded_at = Column(DateTime(timezone=True), server_default=now())
-    processed_at = Column(DateTime(timezone=True), nullable=True)
+    processed_at = Column('processed_at', DateTime(timezone=True), nullable=True)  # Явный alias для существующей колонки
 
     # Связи
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)

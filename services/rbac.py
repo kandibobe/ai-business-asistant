@@ -199,19 +199,7 @@ ROLE_DEFINITIONS: Dict[Role, RoleDefinition] = {
         name=Role.MODERATOR,
         display_name="Moderator",
         description="Can moderate user content",
-        permissions={
-            # All premium permissions
-            *ROLE_DEFINITIONS.get(Role.PREMIUM, RoleDefinition(
-                name=Role.PREMIUM,
-                display_name="",
-                description="",
-                permissions=set()
-            )).permissions,
-            # Plus moderator permissions
-            Permission.ADMIN_USERS_VIEW,
-            Permission.ADMIN_LOGS,
-            Permission.RATE_UNLIMITED,
-        },
+        permissions=set(),  # Will be populated after definition
         rate_limit_per_minute=500,
         max_documents=10000,
         max_file_size_mb=200,
@@ -254,14 +242,13 @@ ROLE_DEFINITIONS: Dict[Role, RoleDefinition] = {
 }
 
 
-# Fix circular reference for MODERATOR
-if Role.MODERATOR in ROLE_DEFINITIONS and Role.PREMIUM in ROLE_DEFINITIONS:
-    ROLE_DEFINITIONS[Role.MODERATOR].permissions = {
-        *ROLE_DEFINITIONS[Role.PREMIUM].permissions,
-        Permission.ADMIN_USERS_VIEW,
-        Permission.ADMIN_LOGS,
-        Permission.RATE_UNLIMITED,
-    }
+# Fix circular reference - populate MODERATOR permissions after all roles are defined
+ROLE_DEFINITIONS[Role.MODERATOR].permissions = {
+    *ROLE_DEFINITIONS[Role.PREMIUM].permissions,
+    Permission.ADMIN_USERS_VIEW,
+    Permission.ADMIN_LOGS,
+    Permission.RATE_UNLIMITED,
+}
 
 
 class RBACService:
