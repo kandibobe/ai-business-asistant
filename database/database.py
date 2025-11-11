@@ -1,6 +1,7 @@
 # database/database.py
 
 import os
+from urllib.parse import quote_plus
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
@@ -25,7 +26,10 @@ if not all([DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME]) or os.getenv("TESTING"
         connect_args={"check_same_thread": False}  # Needed for SQLite
     )
 else:
-    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # URL-encode credentials to handle special characters and Cyrillic
+    db_user_encoded = quote_plus(DB_USER)
+    db_pass_encoded = quote_plus(DB_PASS)
+    DATABASE_URL = f"postgresql://{db_user_encoded}:{db_pass_encoded}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
     # echo=False, чтобы не выводить все SQL-запросы в консоль
     # Added connection timeout and pool settings for better reliability
