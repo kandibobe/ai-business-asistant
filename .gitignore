@@ -33,3 +33,4 @@ Thumbs.db
 # Project specific
 downloads/
 *.log
+.venv_windows_backup/

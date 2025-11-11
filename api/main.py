@@ -12,8 +12,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from api.routes import auth, documents, chat, analytics, settings, tools
-from api.middleware.error_handler import log_exception
+# Try relative imports first, fall back to absolute
+try:
+    from .routes import auth, documents, chat, analytics, settings, tools
+    from .middleware.error_handler import log_exception
+except ImportError:
+    from api.routes import auth, documents, chat, analytics, settings, tools
+    from api.middleware.error_handler import log_exception
+
 from utils.logger import setup_logging
 
 # Setup structured logging
