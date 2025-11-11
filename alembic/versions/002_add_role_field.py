@@ -1,7 +1,7 @@
 """Add role field to users table for RBAC
 
-Revision ID: 005_add_role_field
-Revises: previous_revision
+Revision ID: 002_add_role_field
+Revises: 001_initial_schema
 Create Date: 2025-11-11
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '005_add_role_field'
-down_revision = None  # Update this to your latest revision
+revision = '002_add_role_field'
+down_revision = '001_initial_schema'
 branch_labels = None
 depends_on = None
 

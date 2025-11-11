@@ -20,7 +20,6 @@ from handlers.messages import handle_message
 from handlers.reply_keyboard_handler import handle_reply_keyboard
 from audio import handle_audio
 from database.database import init_db, engine
-from migrate_language import migrate_language_field
 
 # Import monitoring and health check utilities
 from utils.metrics import metrics, track_startup_time
@@ -116,11 +115,11 @@ def main() -> None:
     init_db()
     print("✅ Database ready")
 
-    # Run language migration
-    print("\n[3/6] Running database migrations...")
-    logger.info("🌍 Running language migration...")
-    migrate_language_field()
-    print("✅ Migrations completed")
+    # Note: Database migrations should be run separately using Alembic
+    # Run: alembic upgrade head
+    print("\n[3/6] Checking database schema...")
+    print("💡 Tip: Run 'alembic upgrade head' to apply latest migrations")
+    print("✅ Database schema check completed")
 
     print("\n[4/6] Initializing AI model...")
     try:
