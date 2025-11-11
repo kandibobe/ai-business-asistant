@@ -44,7 +44,11 @@ def get_user_stats(db: Session, user_id: int) -> Dict[str, Any]:
 
     # Documents this month
     month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    docs_this_month = sum(1 for doc in documents if doc.created_at >= month_start)
+    docs_this_month = sum(
+        1 for doc in documents
+        if (hasattr(doc, 'created_at') and doc.created_at and doc.created_at >= month_start) or
+           (hasattr(doc, 'uploaded_at') and doc.uploaded_at and doc.uploaded_at >= month_start)
+    )
 
     # Active document
     active_doc = None
@@ -131,6 +135,13 @@ def get_document_stats(db: Session, doc_id: int) -> Dict[str, Any]:
         else:
             size_display = f"{doc.file_size / (1024 * 1024):.1f} MB"
 
+    # Safely format created_at
+    created_at_str = 'N/A'
+    if hasattr(doc, 'created_at') and doc.created_at:
+        created_at_str = doc.created_at.strftime('%d.%m.%Y %H:%M')
+    elif hasattr(doc, 'uploaded_at') and doc.uploaded_at:
+        created_at_str = doc.uploaded_at.strftime('%d.%m.%Y %H:%M')
+
     return {
         'id': doc.id,
         'name': doc.file_name,
@@ -140,7 +151,7 @@ def get_document_stats(db: Session, doc_id: int) -> Dict[str, Any]:
         'file_size_bytes': doc.file_size or 0,
         'word_count': doc.word_count or 0,
         'char_count': doc.char_count or (len(doc.content) if doc.content else 0),
-        'created_at': doc.created_at.strftime('%d.%m.%Y %H:%M'),
+        'created_at': created_at_str,
         'uploaded_at': doc.uploaded_at.strftime('%d.%m.%Y %H:%M') if doc.uploaded_at else 'N/A',
         'processed_at': doc.processed_at.strftime('%d.%m.%Y %H:%M') if doc.processed_at else 'Not processed',
         'processed': doc.processed_at is not None,

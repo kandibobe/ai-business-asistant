@@ -138,9 +138,16 @@ async def handle_chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE
             await self.message.reply_html(text, reply_markup=reply_markup)
 
     fake_query = FakeCallbackQuery(update.message)
-    update.callback_query = fake_query
 
-    await handle_ai_chat_mode(update, context)
+    # Создаем новый Update объект вместо модификации существующего
+    # В python-telegram-bot Update объекты immutable
+    fake_update = Update(
+        update_id=update.update_id,
+        message=update.message,
+        callback_query=fake_query
+    )
+
+    await handle_ai_chat_mode(fake_update, context)
 
 
 async def handle_tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -160,9 +167,16 @@ async def handle_tools_command(update: Update, context: ContextTypes.DEFAULT_TYP
             await self.message.reply_html(text, reply_markup=reply_markup)
 
     fake_query = FakeCallbackQuery(update.message)
-    update.callback_query = fake_query
 
-    await handle_developer_tools(update, context)
+    # Создаем новый Update объект вместо модификации существующего
+    # В python-telegram-bot Update объекты immutable
+    fake_update = Update(
+        update_id=update.update_id,
+        message=update.message,
+        callback_query=fake_query
+    )
+
+    await handle_developer_tools(fake_update, context)
 
 
 async def handle_main_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

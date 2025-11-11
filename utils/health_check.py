@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
 import time
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class HealthCheck:
             from database.database import engine
 
             with engine.connect() as conn:
-                result = conn.execute("SELECT 1")
+                result = conn.execute(text("SELECT 1"))
                 result.fetchone()
 
             return {
@@ -126,7 +127,7 @@ class HealthCheck:
 
             start = time.time()
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                conn.execute(text("SELECT 1"))
             latency = (time.time() - start) * 1000
             return round(latency, 2)
         except Exception:
