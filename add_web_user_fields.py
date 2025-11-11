@@ -10,6 +10,7 @@ import os
 import sys
 from sqlalchemy import create_engine, text, inspect
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
 # Load environment variables
 load_dotenv()
@@ -23,7 +24,11 @@ def get_database_url():
     db_port = os.getenv('DB_PORT', '5432')
     db_name = os.getenv('DB_NAME', 'ai_bot_db')
 
-    return f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    # URL-encode credentials to handle special characters (including Cyrillic)
+    db_user_encoded = quote_plus(db_user)
+    db_pass_encoded = quote_plus(db_pass)
+
+    return f"postgresql://{db_user_encoded}:{db_pass_encoded}@{db_host}:{db_port}/{db_name}"
 
 
 def add_web_user_fields():
