@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux'
 import { RootState } from './store'
 import ErrorBoundary from './components/ErrorBoundary'
 import MainLayout from './components/layout/MainLayout'
+import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import DocumentsPage from './pages/DocumentsPage'
@@ -17,29 +18,41 @@ function App() {
   return (
     <ErrorBoundary>
       <Routes>
-      {/* Public routes */}
-      <Route
-        path="/login"
-        element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" replace />}
-      />
+        {/* Public routes */}
+        <Route
+          path="/"
+          element={!isAuthenticated ? <LandingPage /> : <Navigate to="/app/dashboard" replace />}
+        />
+        <Route
+          path="/login"
+          element={!isAuthenticated ? <LoginPage /> : <Navigate to="/app/dashboard" replace />}
+        />
 
-      {/* Protected routes */}
-      <Route
-        path="/"
-        element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" replace />}
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="documents" element={<DocumentsPage />} />
-        <Route path="chat" element={<ChatPage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="premium" element={<PremiumPage />} />
-      </Route>
+        {/* Protected routes */}
+        <Route
+          path="/app"
+          element={isAuthenticated ? <MainLayout /> : <Navigate to="/login" replace />}
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="documents" element={<DocumentsPage />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="premium" element={<PremiumPage />} />
+        </Route>
 
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Legacy routes redirect */}
+        <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/documents" element={<Navigate to="/app/documents" replace />} />
+        <Route path="/chat" element={<Navigate to="/app/chat" replace />} />
+        <Route path="/analytics" element={<Navigate to="/app/analytics" replace />} />
+        <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+        <Route path="/premium" element={<Navigate to="/app/premium" replace />} />
+
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </ErrorBoundary>
   )
 }

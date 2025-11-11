@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Box,
   Typography,
@@ -10,12 +10,19 @@ import {
   Chip,
   LinearProgress,
   Alert,
-  Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
+  TextField,
+  InputAdornment,
+  Stack,
+  Menu,
+  MenuItem,
+  Tooltip,
+  alpha,
+  Fade,
+  Paper,
 } from '@mui/material'
 import {
   CloudUpload,
@@ -27,7 +34,14 @@ import {
   Delete,
   Visibility,
   CheckCircle,
+  Search,
+  FilterList,
+  MoreVert,
+  Download,
+  Info,
+  Close,
 } from '@mui/icons-material'
+import { useDropzone } from 'react-dropzone'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
 import {
@@ -43,22 +57,17 @@ import {
 } from '@/store/slices/documentsSlice'
 import { showSnackbar } from '@/store/slices/uiSlice'
 import { documentsApi } from '@/api/services'
+import { gradients } from '@/theme'
 
 export default function DocumentsPage() {
   const dispatch = useDispatch()
-  const { documents, isUploading, uploadProgress, activeDocument } = useSelector(
+  const { documents, isUploading, uploadProgress, activeDocument, error } = useSelector(
     (state: RootState) => state.documents
   )
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [notification, setNotification] = useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error' | 'info'
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  })
+
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterType, setFilterType] = useState<string>('all')
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
     documentId: number | null
@@ -68,23 +77,27 @@ export default function DocumentsPage() {
     documentId: null,
     documentName: '',
   })
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [selectedDoc, setSelectedDoc] = useState<number | null>(null)
 
-  // Load documents on mount
-  useEffect(() => {
-    loadDocuments()
-  }, [])
-
-  const loadDocuments = async () => {
-    try {
-      dispatch(fetchDocumentsStart())
-      const response = await documentService.list()
-      dispatch(fetchDocumentsSuccess(response.documents))
-    } catch (error: any) {
-      console.error('Failed to load documents:', error)
-      dispatch(fetchDocumentsFailure(error.message || 'Failed to load documents'))
-      showNotification('Failed to load documents', 'error')
-    }
-  }
+  // Drag & Drop setup
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'text/csv': ['.csv'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'],
+      'audio/mpeg': ['.mp3'],
+      'audio/wav': ['.wav'],
+      'text/plain': ['.txt'],
+    },
+    maxSize: 50 * 1024 * 1024, // 50MB
+    onDrop: (acceptedFiles) => {
+      setSelectedFiles(acceptedFiles)
+    },
+  })
 
   useEffect(() => {
     loadDocuments()
@@ -96,10 +109,9 @@ export default function DocumentsPage() {
       const response = await documentsApi.list()
       dispatch(fetchDocumentsSuccess(response.documents))
 
-      // Set active document if exists
       if (response.active_document_id) {
         const activeDoc = response.documents.find(
-          (doc) => doc.id === response.active_document_id
+          (doc: any) => doc.id === response.active_document_id
         )
         if (activeDoc) {
           dispatch(setActiveDocument(activeDoc))
@@ -110,40 +122,26 @@ export default function DocumentsPage() {
     }
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0]
-
-      // Validate file size (50MB max)
-      const maxSize = 50 * 1024 * 1024
-      if (file.size > maxSize) {
-        showNotification('File size exceeds 50MB limit', 'error')
-        return
-      }
-
-      setSelectedFile(file)
-    }
-  }
-
   const handleUpload = async () => {
-    if (!selectedFile) return
+    if (selectedFiles.length === 0) return
 
     try {
       dispatch(uploadStart())
-      const document = await documentsApi.upload(selectedFile, (progress) => {
-        dispatch(setUploadProgress(progress))
-      })
 
-      dispatch(uploadSuccess(document))
+      for (const file of selectedFiles) {
+        const document = await documentsApi.upload(file, (progress) => {
+          dispatch(setUploadProgress(progress))
+        })
+        dispatch(uploadSuccess(document))
+      }
+
       dispatch(
         showSnackbar({
-          message: 'Document uploaded successfully!',
+          message: `${selectedFiles.length} document(s) uploaded successfully!`,
           severity: 'success',
         })
       )
-      setSelectedFile(null)
-
-      // Reload documents to get updated list
+      setSelectedFiles([])
       loadDocuments()
     } catch (error: any) {
       dispatch(uploadFailure(error.message))
@@ -159,7 +157,7 @@ export default function DocumentsPage() {
   const handleActivate = async (documentId: number) => {
     try {
       await documentsApi.activate(documentId)
-      const doc = documents.find((d) => d.id === documentId)
+      const doc = documents.find((d: any) => d.id === documentId)
       if (doc) {
         dispatch(setActiveDocument(doc))
         dispatch(
@@ -169,6 +167,7 @@ export default function DocumentsPage() {
           })
         )
       }
+      handleMenuClose()
     } catch (error: any) {
       dispatch(
         showSnackbar({
@@ -179,20 +178,28 @@ export default function DocumentsPage() {
     }
   }
 
-  const handleDelete = async (documentId: number) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
-      return
-    }
+  const handleDeleteClick = (documentId: number, documentName: string) => {
+    setDeleteDialog({
+      open: true,
+      documentId,
+      documentName,
+    })
+    handleMenuClose()
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.documentId) return
 
     try {
-      await documentsApi.delete(documentId)
-      dispatch(deleteDocumentAction(documentId))
+      await documentsApi.delete(deleteDialog.documentId)
+      dispatch(deleteDocumentAction(deleteDialog.documentId))
       dispatch(
         showSnackbar({
           message: 'Document deleted',
           severity: 'success',
         })
       )
+      setDeleteDialog({ open: false, documentId: null, documentName: '' })
     } catch (error: any) {
       dispatch(
         showSnackbar({
@@ -203,18 +210,41 @@ export default function DocumentsPage() {
     }
   }
 
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, docId: number) => {
+    setAnchorEl(event.currentTarget)
+    setSelectedDoc(docId)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+    setSelectedDoc(null)
+  }
+
   const getDocumentIcon = (type: string) => {
     switch (type) {
       case 'pdf':
-        return <PictureAsPdf />
+        return <PictureAsPdf fontSize="large" />
       case 'excel':
-        return <TableChart />
+        return <TableChart fontSize="large" />
       case 'word':
-        return <Article />
+        return <Article fontSize="large" />
       case 'url':
-        return <LinkIcon />
+        return <LinkIcon fontSize="large" />
       default:
-        return <Description />
+        return <Description fontSize="large" />
+    }
+  }
+
+  const getDocumentColor = (type: string) => {
+    switch (type) {
+      case 'pdf':
+        return gradients.error
+      case 'excel':
+        return gradients.success
+      case 'word':
+        return gradients.info
+      default:
+        return gradients.primary
     }
   }
 
@@ -224,8 +254,31 @@ export default function DocumentsPage() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+
+  // Filter and search documents
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc: any) => {
+      const matchesSearch = doc.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesFilter = filterType === 'all' || doc.document_type === filterType
+      return matchesSearch && matchesFilter
+    })
+  }, [documents, searchQuery, filterType])
+
+  const documentTypes = useMemo(() => {
+    const types = new Set(documents.map((doc: any) => doc.document_type))
+    return Array.from(types)
+  }, [documents])
+
   return (
     <Box>
+      {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight={700} gutterBottom>
           Documents
@@ -236,210 +289,339 @@ export default function DocumentsPage() {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => dispatch(fetchDocumentsFailure(''))}>
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          onClose={() => dispatch(fetchDocumentsFailure(''))}
+        >
           {error}
         </Alert>
       )}
 
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Upload New Document
+      {/* Upload Area */}
+      <Card
+        sx={{
+          mb: 4,
+          background: gradients.primary,
+          color: '#fff',
+        }}
+      >
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ color: '#fff' }}>
+            Upload Documents
           </Typography>
+
           <Box
+            {...getRootProps()}
             sx={{
-              border: '2px dashed',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: 4,
+              border: '3px dashed',
+              borderColor: alpha('#fff', 0.5),
+              borderRadius: 3,
+              p: 6,
               textAlign: 'center',
               mt: 2,
+              bgcolor: alpha('#fff', isDragActive ? 0.2 : 0.1),
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                bgcolor: alpha('#fff', 0.15),
+                borderColor: alpha('#fff', 0.8),
+              },
             }}
           >
-            <CloudUpload sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="body1" gutterBottom>
-              Drag and drop files here or click to browse
+            <input {...getInputProps()} />
+            <CloudUpload sx={{ fontSize: 80, color: '#fff', mb: 2, opacity: 0.9 }} />
+            <Typography variant="h6" gutterBottom sx={{ color: '#fff' }}>
+              {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
             </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Supported formats: PDF, Excel, Word, Audio, Text (Max: 50MB)
+            <Typography variant="body2" sx={{ color: alpha('#fff', 0.8), mb: 2 }}>
+              or click to browse files
             </Typography>
-            <Button
-              variant="contained"
-              component="label"
-              sx={{ mt: 2 }}
-              disabled={isUploading}
-            >
-              Select File
-              <input
-                type="file"
-                hidden
-                onChange={handleFileSelect}
-                accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.mp3,.wav,.txt"
-              />
-            </Button>
-            {selectedFile && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" fontWeight={600}>
-                  Selected: {selectedFile.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatFileSize(selectedFile.size)}
-                </Typography>
-                <Box sx={{ mt: 1 }}>
+            <Chip
+              label="PDF • Excel • Word • Audio • Text"
+              sx={{
+                bgcolor: alpha('#fff', 0.2),
+                color: '#fff',
+                fontWeight: 500,
+              }}
+            />
+            <Typography variant="caption" display="block" sx={{ color: alpha('#fff', 0.7), mt: 1 }}>
+              Maximum file size: 50MB
+            </Typography>
+          </Box>
+
+          {fileRejections.length > 0 && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Some files were rejected. Please check file types and sizes.
+            </Alert>
+          )}
+
+          {selectedFiles.length > 0 && (
+            <Fade in>
+              <Box sx={{ mt: 3 }}>
+                <Stack spacing={1}>
+                  {selectedFiles.map((file, index) => (
+                    <Paper
+                      key={index}
+                      sx={{
+                        p: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        bgcolor: alpha('#fff', 0.9),
+                      }}
+                    >
+                      <Description sx={{ mr: 2, color: 'primary.main' }} />
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {file.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatFileSize(file.size)}
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== index))}
+                      >
+                        <Close />
+                      </IconButton>
+                    </Paper>
+                  ))}
+                </Stack>
+
+                <Stack direction="row" spacing={2} mt={2}>
                   <Button
                     variant="contained"
-                    color="primary"
+                    size="large"
                     onClick={handleUpload}
                     disabled={isUploading}
+                    sx={{
+                      bgcolor: '#fff',
+                      color: 'primary.main',
+                      '&:hover': {
+                        bgcolor: alpha('#fff', 0.9),
+                      },
+                    }}
                   >
-                    Upload
+                    Upload {selectedFiles.length} File(s)
                   </Button>
                   <Button
                     variant="outlined"
-                    onClick={() => setSelectedFile(null)}
-                    sx={{ ml: 1 }}
+                    size="large"
+                    onClick={() => setSelectedFiles([])}
                     disabled={isUploading}
+                    sx={{
+                      borderColor: '#fff',
+                      color: '#fff',
+                      '&:hover': {
+                        borderColor: '#fff',
+                        bgcolor: alpha('#fff', 0.1),
+                      },
+                    }}
                   >
-                    Cancel
+                    Clear
                   </Button>
-                </Box>
+                </Stack>
               </Box>
-            )}
-            {isUploading && (
-              <Box sx={{ mt: 2 }}>
-                <LinearProgress variant="determinate" value={uploadProgress} />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Uploading... {uploadProgress}%
-                </Typography>
-              </Box>
-            )}
-          </Box>
+            </Fade>
+          )}
+
+          {isUploading && (
+            <Box sx={{ mt: 3 }}>
+              <LinearProgress
+                variant="determinate"
+                value={uploadProgress}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor: alpha('#fff', 0.2),
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: '#fff',
+                  },
+                }}
+              />
+              <Typography variant="body2" sx={{ mt: 1, color: '#fff', textAlign: 'center' }}>
+                Uploading... {uploadProgress}%
+              </Typography>
+            </Box>
+          )}
         </CardContent>
       </Card>
 
-      <Typography variant="h6" fontWeight={600} gutterBottom>
-        Your Documents ({documents.length})
-      </Typography>
+      {/* Search and Filter */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
+        <TextField
+          fullWidth
+          placeholder="Search documents..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <TextField
+          select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          sx={{ minWidth: 200 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <FilterList />
+              </InputAdornment>
+            ),
+          }}
+        >
+          <MenuItem value="all">All Types</MenuItem>
+          {documentTypes.map((type) => (
+            <MenuItem key={type} value={type}>
+              {type.toUpperCase()}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
 
+      {/* Documents Header */}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h6" fontWeight={600}>
+          Your Documents ({filteredDocuments.length})
+        </Typography>
+        {activeDocument && (
+          <Chip
+            icon={<CheckCircle />}
+            label={`Active: ${activeDocument.file_name}`}
+            color="success"
+            variant="outlined"
+          />
+        )}
+      </Stack>
+
+      {/* Documents Grid */}
       <Grid container spacing={3}>
-        {documents.length === 0 ? (
+        {filteredDocuments.length === 0 ? (
           <Grid item xs={12}>
             <Card>
-              <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                <Description sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="body1" color="text.secondary">
-                  No documents uploaded yet. Upload your first document to get started!
+              <CardContent sx={{ textAlign: 'center', py: 8 }}>
+                <Description sx={{ fontSize: 80, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                <Typography variant="h6" gutterBottom>
+                  {searchQuery || filterType !== 'all' ? 'No documents found' : 'No documents uploaded yet'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {searchQuery || filterType !== 'all'
+                    ? 'Try adjusting your search or filter'
+                    : 'Upload your first document to get started with AI analysis'}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
         ) : (
-          documents.map((doc) => (
+          filteredDocuments.map((doc: any) => (
             <Grid item xs={12} sm={6} md={4} key={doc.id}>
-              <Card
-                sx={{
-                  border: activeDocument?.id === doc.id ? 2 : 0,
-                  borderColor: 'success.main',
-                }}
-              >
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box sx={{ color: 'primary.main', mr: 2 }}>
-                      {getDocumentIcon(doc.document_type)}
-                    </Box>
-                    <Typography variant="h6" sx={{ flex: 1 }} noWrap>
-                      {doc.file_name}
-                    </Typography>
-                    {activeDocument?.id === doc.id && (
-                      <CheckCircle color="success" fontSize="small" />
-                    )}
-                  </Box>
-                  <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
-                    <Chip
-                      label={doc.document_type.toUpperCase()}
-                      size="small"
-                    />
-                    {activeDocument?.id === doc.id && (
-                      <Chip
-                        label="ACTIVE"
-                        size="small"
-                        color="success"
-                      />
-                    )}
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => handleActivate(doc.id)}
-                      disabled={activeDocument?.id === doc.id}
-                      title="Set as active for chat"
-                    >
-                      <Visibility />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDelete(doc.id)}
-                      title="Delete document"
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ) : (
-            documents.map((doc) => (
-              <Grid item xs={12} sm={6} md={4} key={doc.id}>
+              <Fade in>
                 <Card
                   sx={{
+                    height: '100%',
                     position: 'relative',
-                    border: doc.is_active ? '2px solid' : 'none',
-                    borderColor: 'primary.main',
+                    border: activeDocument?.id === doc.id ? 3 : 0,
+                    borderColor: 'success.main',
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                    },
                   }}
                 >
-                  {doc.is_active && (
+                  {activeDocument?.id === doc.id && (
                     <Chip
                       label="Active"
-                      color="primary"
+                      color="success"
                       size="small"
                       icon={<CheckCircle />}
-                      sx={{ position: 'absolute', top: 8, right: 8 }}
+                      sx={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        zIndex: 1,
+                      }}
                     />
                   )}
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box sx={{ color: 'primary.main', mr: 2 }}>
-                        {getDocumentIcon(doc.document_type)}
-                      </Box>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="h6" noWrap title={doc.file_name}>
-                          {doc.file_name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatFileSize(doc.file_size)}
-                        </Typography>
-                      </Box>
+
+                  <CardContent sx={{ p: 3 }}>
+                    <Box
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 3,
+                        background: getDocumentColor(doc.document_type),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        mb: 2,
+                      }}
+                    >
+                      {getDocumentIcon(doc.document_type)}
                     </Box>
-                    <Box sx={{ mb: 2 }}>
+
+                    <Tooltip title={doc.file_name}>
+                      <Typography
+                        variant="h6"
+                        fontWeight={600}
+                        noWrap
+                        sx={{ mb: 1 }}
+                      >
+                        {doc.file_name}
+                      </Typography>
+                    </Tooltip>
+
+                    <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
                       <Chip
                         label={doc.document_type.toUpperCase()}
                         size="small"
-                        sx={{ mr: 1 }}
+                        sx={{ fontWeight: 600 }}
                       />
-                      <Chip
-                        label={doc.status.toUpperCase()}
-                        size="small"
-                        color={doc.status === 'processed' ? 'success' : 'default'}
-                      />
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {!doc.is_active && (
-                        <Button
+                      {doc.word_count && (
+                        <Chip
+                          label={`${doc.word_count} words`}
                           size="small"
                           variant="outlined"
+                        />
+                      )}
+                    </Stack>
+
+                    <Stack spacing={0.5} sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Size: {formatFileSize(doc.file_size)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Uploaded: {formatDate(doc.uploaded_at)}
+                      </Typography>
+                      {doc.language_detected && (
+                        <Typography variant="caption" color="text.secondary">
+                          Language: {doc.language_detected}
+                        </Typography>
+                      )}
+                    </Stack>
+
+                    <Stack direction="row" spacing={1}>
+                      {activeDocument?.id !== doc.id && (
+                        <Button
+                          size="small"
+                          variant="contained"
                           onClick={() => handleActivate(doc.id)}
+                          startIcon={<Visibility />}
                           fullWidth
                         >
                           Activate
@@ -447,22 +629,54 @@ export default function DocumentsPage() {
                       )}
                       <IconButton
                         size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(doc.id, doc.file_name)}
+                        onClick={(e) => handleMenuOpen(e, doc.id)}
                       >
-                        <Delete />
+                        <MoreVert />
                       </IconButton>
-                    </Box>
+                    </Stack>
                   </CardContent>
                 </Card>
-              </Grid>
-            ))
-          )}
-        </Grid>
-      )}
+              </Fade>
+            </Grid>
+          ))
+        )}
+      </Grid>
+
+      {/* Document Actions Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => selectedDoc && handleActivate(selectedDoc)}>
+          <Visibility sx={{ mr: 1 }} fontSize="small" />
+          Activate
+        </MenuItem>
+        <MenuItem>
+          <Download sx={{ mr: 1 }} fontSize="small" />
+          Download
+        </MenuItem>
+        <MenuItem>
+          <Info sx={{ mr: 1 }} fontSize="small" />
+          Details
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            const doc = documents.find((d: any) => d.id === selectedDoc)
+            if (doc) handleDeleteClick(doc.id, doc.file_name)
+          }}
+          sx={{ color: 'error.main' }}
+        >
+          <Delete sx={{ mr: 1 }} fontSize="small" />
+          Delete
+        </MenuItem>
+      </Menu>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, documentId: null, documentName: '' })}>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, documentId: null, documentName: '' })}
+      >
         <DialogTitle>Delete Document</DialogTitle>
         <DialogContent>
           <Typography>
@@ -479,22 +693,6 @@ export default function DocumentsPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Notification Snackbar */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={() => setNotification({ ...notification, open: false })}
-          severity={notification.severity}
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
     </Box>
   )
 }
