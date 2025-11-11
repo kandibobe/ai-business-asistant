@@ -53,10 +53,13 @@
 - **Full Test Coverage** - 100+ тестов с pytest
 - **Deployment Ready** - Systemd services, Nginx config, полная документация
 
-📚 **См. также:**
-- [TOP_10_IMPROVEMENTS.md](./TOP_10_IMPROVEMENTS.md) - Детальный план улучшений
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - Production deployment guide
+📚 **Дополнительная документация:**
+- [TOP_10_IMPROVEMENTS.md](./docs/TOP_10_IMPROVEMENTS.md) - Детальный план улучшений
+- [DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Production deployment guide
 - [SECURITY.md](./SECURITY.md) - Security best practices
+- [API_README.md](./docs/API_README.md) - API документация
+- [TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) - Руководство по тестированию
+- [Все документы](./docs/) - Полная документация проекта
 
 ---
 
@@ -74,7 +77,7 @@
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/your-username/ai-business-asistant.git
+git clone https://github.com/kandibobe/ai-business-asistant.git
 cd ai-business-asistant
 ```
 
@@ -150,7 +153,7 @@ docker-compose up -d
 База данных инициализируется автоматически при первом запуске бота. Если у вас уже есть база данных, выполните миграцию:
 
 ```bash
-python migrate_db.py
+python scripts/migrate_db.py
 ```
 
 ### 7. Запуск Celery Worker
@@ -226,11 +229,11 @@ python main.py
 ```
 ai-business-asistant/
 ├── main.py                 # Точка входа приложения
-├── config.py              # Конфигурация (модель AI)
+├── run.py                  # Альтернативный запуск
 ├── celery_app.py          # Конфигурация Celery (с поддержкой Windows)
 ├── tasks.py               # Celery задачи (PDF, Excel, Word, Audio, URL)
 ├── audio.py               # Обработчик аудио/голосовых сообщений
-├── migrate_db.py          # Скрипт миграции базы данных
+├── localization.py        # Модуль локализации
 │
 ├── handlers/              # Обработчики Telegram событий
 │   ├── common.py          # Общие команды (/start, /clear, callbacks)
@@ -242,14 +245,43 @@ ai-business-asistant/
 │   ├── models.py          # Модели данных (User, Document)
 │   └── crud.py            # CRUD операции
 │
-├── start_bot.bat          # Windows: автозапуск (бот + worker + миграция)
-├── start_worker.bat       # Windows: запуск только Celery worker
-├── docker-compose.yml     # Docker конфигурация (PostgreSQL + Redis + Bot + Worker)
-├── Dockerfile             # Docker образ для основного бота
-├── Dockerfile.worker      # Docker образ для Celery worker
+├── api/                   # FastAPI REST API
+│   ├── main.py            # API сервер
+│   ├── routes/            # API endpoints
+│   └── auth.py            # JWT аутентификация
+│
+├── web-app/               # React + TypeScript веб-приложение
+│   ├── src/               # Исходный код
+│   ├── public/            # Статические файлы
+│   └── package.json       # Node.js зависимости
+│
+├── tests/                 # Тесты приложения
+│   ├── unit/              # Юнит-тесты
+│   └── integration/       # Интеграционные тесты
+│
+├── scripts/               # Утилитарные скрипты
+│   ├── migrate_db.py      # Миграция базы данных
+│   ├── check_setup.py     # Проверка настройки
+│   └── cleanup_project.py # Очистка проекта
+│
+├── docs/                  # Документация проекта
+│   ├── API_README.md      # API документация
+│   ├── DEPLOYMENT.md      # Руководство по развертыванию
+│   ├── TESTING_GUIDE.md   # Руководство по тестированию
+│   └── ...                # Другие документы
+│
+├── .github/               # GitHub конфигурация
+│   └── workflows/         # CI/CD конфигурация
+│       └── ci-cd.yml      # GitHub Actions workflow
+│
+├── alembic/               # Database migrations
+├── config/                # Конфигурационные файлы
+├── docker-compose.yml     # Docker конфигурация
+├── Dockerfile             # Docker образ для бота
 ├── requirements.txt       # Python зависимости
 ├── .env.example          # Пример конфигурации
-└── README.md             # Документация
+├── LICENSE               # MIT License
+└── README.md             # Основная документация
 ```
 
 ---
@@ -308,6 +340,18 @@ ai-business-asistant/
 docker-compose up -d --build
 ```
 
+### CI/CD Pipeline
+
+Проект настроен с автоматизированным CI/CD через GitHub Actions:
+
+- **Автоматическое тестирование** - запуск тестов при каждом push и PR
+- **Проверка безопасности** - Trivy scanner и safety check
+- **Линтинг кода** - автоматическая проверка стиля кода с flake8
+- **Coverage отчеты** - автоматическая загрузка в Codecov
+- **Автодеплой** - автоматическое развертывание на Cloud Run (main branch)
+
+См. `.github/workflows/ci-cd.yml` для подробностей.
+
 ### Рекомендации по безопасности
 
 - Используйте сильные пароли для PostgreSQL
@@ -315,6 +359,7 @@ docker-compose up -d --build
 - Не коммитьте `.env` в Git
 - Используйте HTTPS для production окружения
 - Регулярно обновляйте зависимости
+- См. [SECURITY.md](./SECURITY.md) для деталей
 
 ---
 
@@ -326,7 +371,7 @@ docker-compose up -d --build
 
 **Решение 1 (рекомендуется)**: Выполнить миграцию
 ```bash
-python migrate_db.py
+python scripts/migrate_db.py
 ```
 
 **Решение 2**: Полная пересборка БД (УДАЛИТ ВСЕ ДАННЫЕ!)
@@ -447,11 +492,11 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 👤 Автор
 
-**Your Name**
+**AI Business Assistant Team**
 
-- GitHub: [@your-username](https://github.com/your-username)
-- Telegram: [@your-telegram](https://t.me/your-telegram)
-- Email: your.email@example.com
+- GitHub: [@kandibobe](https://github.com/kandibobe)
+- Repository: [ai-business-asistant](https://github.com/kandibobe/ai-business-asistant)
+- Issues: [Report Bug](https://github.com/kandibobe/ai-business-asistant/issues)
 
 ---
 
