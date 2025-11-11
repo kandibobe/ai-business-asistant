@@ -124,23 +124,30 @@ async def my_docs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         docs_list = []
         for doc in documents:
             # Determine type
-            file_name = doc.file_name.lower()
+            file_name = doc.file_name.lower() if doc.file_name else 'unknown'
             if file_name.endswith('.pdf'):
                 doc_type = 'pdf'
             elif file_name.endswith(('.xlsx', '.xls')):
                 doc_type = 'excel'
             elif file_name.endswith('.docx'):
                 doc_type = 'word'
-            elif doc.file_path.startswith('http'):
+            elif doc.file_path and doc.file_path.startswith('http'):
                 doc_type = 'url'
             else:
                 doc_type = 'other'
 
+            # Safely format created_at date
+            created_at_str = 'N/A'
+            if hasattr(doc, 'created_at') and doc.created_at:
+                created_at_str = doc.created_at.strftime('%d.%m.%Y')
+            elif hasattr(doc, 'uploaded_at') and doc.uploaded_at:
+                created_at_str = doc.uploaded_at.strftime('%d.%m.%Y')
+
             docs_list.append({
                 'id': doc.id,
-                'name': doc.file_name,
+                'name': doc.file_name or 'Unnamed Document',
                 'type': doc_type,
-                'created_at': doc.created_at.strftime('%d.%m.%Y'),
+                'created_at': created_at_str,
                 'questions_count': 0,  # TODO: add tracking
                 'is_active': db_user.active_document_id == doc.id,
             })

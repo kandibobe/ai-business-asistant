@@ -106,5 +106,15 @@ class Document(Base):
     def extracted_text(self, value):
         self.content = value
 
+    @property
+    def created_at(self):
+        """Alias for uploaded_at for backward compatibility."""
+        return self.uploaded_at
+
+    @created_at.setter
+    def created_at(self, value):
+        """Alias for uploaded_at for backward compatibility."""
+        self.uploaded_at = value
+
     def __repr__(self):
         return f"<Document(file_name='{self.file_name}', type='{self.document_type}')>"
