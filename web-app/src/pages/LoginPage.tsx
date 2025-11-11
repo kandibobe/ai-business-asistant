@@ -61,7 +61,7 @@ export default function LoginPage() {
         })
 
         dispatch(loginSuccess(response.data))
-        navigate('/dashboard')
+        navigate('/app/dashboard')
       } else {
         // Register
         const response = await apiClient.post('/auth/register', {
@@ -72,7 +72,7 @@ export default function LoginPage() {
         })
 
         dispatch(loginSuccess(response.data))
-        navigate('/dashboard')
+        navigate('/app/dashboard')
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || 'Authentication failed'
