@@ -35,6 +35,7 @@ Pillow==10.2.0
 
 # --- Безопасность и валидация ---
 pydantic==2.6.0
+pydantic-settings==2.1.0
 python-magic==0.4.27
 python-magic-bin==0.4.14; platform_system == 'Windows'
 email-validator==2.1.0

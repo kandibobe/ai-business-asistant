@@ -30,6 +30,9 @@ class User(Base):
     notifications_enabled = Column(String, default='true', nullable=True)  # Уведомления (true/false как строка)
     auto_analysis_enabled = Column(String, default='false', nullable=True)  # Авто-анализ документов
 
+    # RBAC - Role-Based Access Control
+    role = Column(String, default='free', nullable=False, index=True)  # User role: guest, free, premium, business, admin, etc.
+
     # ID документа, который пользователь выбрал как активный
     active_document_id = Column(Integer, ForeignKey('documents.id'), nullable=True)
 
