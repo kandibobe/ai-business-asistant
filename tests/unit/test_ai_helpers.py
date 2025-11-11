@@ -47,7 +47,7 @@ class TestGenerateAIResponse:
 
     def test_max_retries_exceeded(self, mock_gemini_model):
         """Test that AIServiceError is raised after max retries."""
-        mock_gemini_model.generate_content.side_effect = Exception("Persistent error")
+        mock_gemini_model.generate_content.side_effect = Exception("Request timed out")
 
         with pytest.raises(AIServiceError):
             generate_ai_response(
