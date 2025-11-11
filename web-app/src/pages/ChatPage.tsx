@@ -24,7 +24,6 @@ import { chatApi } from '@/api/services'
 export default function ChatPage() {
   const dispatch = useDispatch()
   const { messages, isLoading } = useSelector((state: RootState) => state.chat)
-  const { user } = useSelector((state: RootState) => state.auth)
   const { activeDocument } = useSelector((state: RootState) => state.documents)
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -58,7 +57,6 @@ export default function ChatPage() {
       timestamp: new Date().toISOString(),
     }
 
-    const messageText = input
     dispatch(addMessage(userMessage))
     setInput('')
     dispatch(sendMessageStart())

@@ -10,12 +10,10 @@ import {
   Chip,
   LinearProgress,
   Alert,
-  Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
 } from '@mui/material'
 import {
   CloudUpload,
@@ -46,19 +44,10 @@ import { documentsApi } from '@/api/services'
 
 export default function DocumentsPage() {
   const dispatch = useDispatch()
-  const { documents, isUploading, uploadProgress, activeDocument } = useSelector(
+  const { documents, isUploading, uploadProgress, activeDocument, error } = useSelector(
     (state: RootState) => state.documents
   )
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [notification, setNotification] = useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error' | 'info'
-  }>({
-    open: false,
-    message: '',
-    severity: 'info',
-  })
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
     documentId: number | null
@@ -70,22 +59,6 @@ export default function DocumentsPage() {
   })
 
   // Load documents on mount
-  useEffect(() => {
-    loadDocuments()
-  }, [])
-
-  const loadDocuments = async () => {
-    try {
-      dispatch(fetchDocumentsStart())
-      const response = await documentService.list()
-      dispatch(fetchDocumentsSuccess(response.documents))
-    } catch (error: any) {
-      console.error('Failed to load documents:', error)
-      dispatch(fetchDocumentsFailure(error.message || 'Failed to load documents'))
-      showNotification('Failed to load documents', 'error')
-    }
-  }
-
   useEffect(() => {
     loadDocuments()
   }, [])
@@ -117,7 +90,12 @@ export default function DocumentsPage() {
       // Validate file size (50MB max)
       const maxSize = 50 * 1024 * 1024
       if (file.size > maxSize) {
-        showNotification('File size exceeds 50MB limit', 'error')
+        dispatch(
+          showSnackbar({
+            message: 'File size exceeds 50MB limit',
+            severity: 'error',
+          })
+        )
         return
       }
 
@@ -179,20 +157,27 @@ export default function DocumentsPage() {
     }
   }
 
-  const handleDelete = async (documentId: number) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
-      return
-    }
+  const handleDeleteClick = (documentId: number, documentName: string) => {
+    setDeleteDialog({
+      open: true,
+      documentId,
+      documentName,
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.documentId) return
 
     try {
-      await documentsApi.delete(documentId)
-      dispatch(deleteDocumentAction(documentId))
+      await documentsApi.delete(deleteDialog.documentId)
+      dispatch(deleteDocumentAction(deleteDialog.documentId))
       dispatch(
         showSnackbar({
           message: 'Document deleted',
           severity: 'success',
         })
       )
+      setDeleteDialog({ open: false, documentId: null, documentName: '' })
     } catch (error: any) {
       dispatch(
         showSnackbar({
@@ -338,50 +323,62 @@ export default function DocumentsPage() {
             <Grid item xs={12} sm={6} md={4} key={doc.id}>
               <Card
                 sx={{
-                  border: activeDocument?.id === doc.id ? 2 : 0,
-                  borderColor: 'success.main',
+                  position: 'relative',
+                  border: activeDocument?.id === doc.id ? '2px solid' : 'none',
+                  borderColor: 'primary.main',
                 }}
               >
+                {activeDocument?.id === doc.id && (
+                  <Chip
+                    label="Active"
+                    color="primary"
+                    size="small"
+                    icon={<CheckCircle />}
+                    sx={{ position: 'absolute', top: 8, right: 8 }}
+                  />
+                )}
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Box sx={{ color: 'primary.main', mr: 2 }}>
                       {getDocumentIcon(doc.document_type)}
                     </Box>
-                    <Typography variant="h6" sx={{ flex: 1 }} noWrap>
-                      {doc.file_name}
-                    </Typography>
-                    {activeDocument?.id === doc.id && (
-                      <CheckCircle color="success" fontSize="small" />
-                    )}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" noWrap title={doc.file_name}>
+                        {doc.file_name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatFileSize(doc.file_size || 0)}
+                      </Typography>
+                    </Box>
                   </Box>
-                  <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+                  <Box sx={{ mb: 2 }}>
                     <Chip
                       label={doc.document_type.toUpperCase()}
                       size="small"
+                      sx={{ mr: 1 }}
                     />
-                    {activeDocument?.id === doc.id && (
-                      <Chip
-                        label="ACTIVE"
-                        size="small"
-                        color="success"
-                      />
-                    )}
+                    <Chip
+                      label={doc.status?.toUpperCase() || 'PENDING'}
+                      size="small"
+                      color={doc.status === 'processed' ? 'success' : 'default'}
+                    />
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => handleActivate(doc.id)}
-                      disabled={activeDocument?.id === doc.id}
-                      title="Set as active for chat"
-                    >
-                      <Visibility />
-                    </IconButton>
+                    {activeDocument?.id !== doc.id && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleActivate(doc.id)}
+                        fullWidth
+                        startIcon={<Visibility />}
+                      >
+                        Activate
+                      </Button>
+                    )}
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => handleDelete(doc.id)}
-                      title="Delete document"
+                      onClick={() => handleDeleteClick(doc.id, doc.file_name)}
                     >
                       <Delete />
                     </IconButton>
@@ -389,80 +386,15 @@ export default function DocumentsPage() {
                 </CardContent>
               </Card>
             </Grid>
-          ) : (
-            documents.map((doc) => (
-              <Grid item xs={12} sm={6} md={4} key={doc.id}>
-                <Card
-                  sx={{
-                    position: 'relative',
-                    border: doc.is_active ? '2px solid' : 'none',
-                    borderColor: 'primary.main',
-                  }}
-                >
-                  {doc.is_active && (
-                    <Chip
-                      label="Active"
-                      color="primary"
-                      size="small"
-                      icon={<CheckCircle />}
-                      sx={{ position: 'absolute', top: 8, right: 8 }}
-                    />
-                  )}
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box sx={{ color: 'primary.main', mr: 2 }}>
-                        {getDocumentIcon(doc.document_type)}
-                      </Box>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="h6" noWrap title={doc.file_name}>
-                          {doc.file_name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatFileSize(doc.file_size)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Box sx={{ mb: 2 }}>
-                      <Chip
-                        label={doc.document_type.toUpperCase()}
-                        size="small"
-                        sx={{ mr: 1 }}
-                      />
-                      <Chip
-                        label={doc.status.toUpperCase()}
-                        size="small"
-                        color={doc.status === 'processed' ? 'success' : 'default'}
-                      />
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {!doc.is_active && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => handleActivate(doc.id)}
-                          fullWidth
-                        >
-                          Activate
-                        </Button>
-                      )}
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(doc.id, doc.file_name)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))
-          )}
-        </Grid>
-      )}
+          ))
+        )}
+      </Grid>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, documentId: null, documentName: '' })}>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, documentId: null, documentName: '' })}
+      >
         <DialogTitle>Delete Document</DialogTitle>
         <DialogContent>
           <Typography>
@@ -479,22 +411,6 @@ export default function DocumentsPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Notification Snackbar */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={() => setNotification({ ...notification, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={() => setNotification({ ...notification, open: false })}
-          severity={notification.severity}
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
     </Box>
   )
 }

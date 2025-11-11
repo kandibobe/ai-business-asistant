@@ -18,7 +18,6 @@ import {
   Paper,
 } from '@mui/material'
 import {
-  BarChart as BarChartIcon,
   Timeline,
   PieChart as PieChartIcon,
   TrendingUp,
@@ -26,13 +25,9 @@ import {
   Speed,
   QuestionAnswer,
 } from '@mui/icons-material'
-import { analyticsService } from '@/api/services'
+import { analyticsApi, UserStatsResponse } from '@/api/services'
 
-interface UserStats {
-  total_documents: number
-  total_questions: number
-  average_response_time: number
-  documents_by_type: Record<string, number>
+interface UserStats extends UserStatsResponse {
   active_document?: {
     id: number
     file_name: string
@@ -52,7 +47,7 @@ export default function AnalyticsPage() {
   const loadStats = async () => {
     try {
       setLoading(true)
-      const response = await analyticsService.getUserStats()
+      const response = await analyticsApi.getUserStats()
       setStats(response)
     } catch (err: any) {
       console.error('Failed to load analytics:', err)
@@ -172,7 +167,7 @@ export default function AnalyticsPage() {
                 <Speed sx={{ fontSize: 40, color: 'warning.main', mr: 2 }} />
                 <Box>
                   <Typography variant="h4" fontWeight={700}>
-                    {stats.average_response_time.toFixed(2)}s
+                    {((stats.avg_response_time_ms || 0) / 1000).toFixed(2)}s
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Avg Response Time
@@ -315,7 +310,7 @@ export default function AnalyticsPage() {
                 <Grid item xs={12} md={4}>
                   <Paper sx={{ p: 2, backgroundColor: 'success.light', color: 'white' }}>
                     <Typography variant="h5" fontWeight={700}>
-                      {stats.average_response_time < 2 ? 'Fast' : stats.average_response_time < 4 ? 'Medium' : 'Slow'}
+                      {(stats.avg_response_time_ms || 0) / 1000 < 2 ? 'Fast' : (stats.avg_response_time_ms || 0) / 1000 < 4 ? 'Medium' : 'Slow'}
                     </Typography>
                     <Typography variant="body2">
                       Response Speed Rating

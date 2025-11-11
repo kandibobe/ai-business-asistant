@@ -13,6 +13,7 @@ export interface User {
   created_at: string
   is_premium: boolean
   premium_expires_at?: string
+  role?: string
 }
 
 // Document types
@@ -32,6 +33,7 @@ export interface Document {
   uploaded_at: string
   processed_at: string | null
   is_active: boolean
+  status?: string
 }
 
 // Chat message types

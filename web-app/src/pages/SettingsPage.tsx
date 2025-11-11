@@ -14,12 +14,13 @@ import {
   FormControlLabel,
   Alert,
   Snackbar,
-  CircularProgress,
 } from '@mui/material'
 import { Save } from '@mui/icons-material'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
 import {
+  loadSettingsStart,
+  loadSettingsSuccess,
   saveSettingsStart,
   saveSettingsSuccess,
   saveSettingsFailure,
@@ -71,11 +72,16 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     try {
       dispatch(loadSettingsStart())
-      const response = await settingsService.get()
+      const response = await settingsApi.get()
       dispatch(loadSettingsSuccess(response))
     } catch (error: any) {
       console.error('Failed to load settings:', error)
-      showNotification('Failed to load settings', 'error')
+      dispatch(
+        showSnackbar({
+          message: 'Failed to load settings',
+          severity: 'error',
+        })
+      )
     }
   }
 
@@ -90,7 +96,7 @@ export default function SettingsPage() {
     try {
       const updatedSettings = await settingsApi.update(localSettings)
       dispatch(saveSettingsSuccess(updatedSettings))
-      setSaved(true)
+      setHasChanges(false)
       dispatch(
         showSnackbar({
           message: 'Settings saved successfully!',
