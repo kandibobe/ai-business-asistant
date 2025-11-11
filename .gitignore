@@ -34,3 +34,20 @@ Thumbs.db
 downloads/
 *.log
 .venv_windows_backup/
+
+# Docker volumes and data
+postgres_data/
+redis_data/
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Node (web-app)
+node_modules/
+dist/
+.next/
+out/
+build/
