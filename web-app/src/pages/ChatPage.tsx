@@ -53,7 +53,6 @@ const suggestedPrompts = [
 export default function ChatPage() {
   const dispatch = useDispatch()
   const { messages, isLoading } = useSelector((state: RootState) => state.chat)
-  const { user } = useSelector((state: RootState) => state.auth)
   const { activeDocument } = useSelector((state: RootState) => state.documents)
   const [input, setInput] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)

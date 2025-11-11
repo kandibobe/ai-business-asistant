@@ -71,27 +71,67 @@ def graceful_shutdown(signum, frame):
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Global error handler for all bot handlers."""
-    logger.error("❌ An error occurred while processing update:", exc_info=context.error)
+    # Log detailed error information
+    error_type = type(context.error).__name__ if context.error else "Unknown"
+    error_msg = str(context.error) if context.error else "No error details"
+
+    logger.error(
+        f"❌ Error: {error_type}\n"
+        f"Message: {error_msg}\n"
+        f"Update: {update}",
+        exc_info=context.error
+    )
 
     # Send error message to user
     try:
-        if isinstance(update, Update) and update.effective_message:
-            error_message = (
-                "⚠️ An error occurred while processing your request.\n\n"
-                "Please try again or contact administrator."
-            )
+        if isinstance(update, Update):
+            # Determine user language
+            user_id = update.effective_user.id if update.effective_user else None
+            lang = 'ru'  # Default
 
-            # Show details for some critical errors
+            if user_id:
+                try:
+                    from database.database import SessionLocal
+                    from database import crud
+                    db = SessionLocal()
+                    db_user = crud.get_or_create_user(db, user_id, None, None, None)
+                    lang = db_user.language or 'ru'
+                    db.close()
+                except:
+                    pass
+
+            # Build error message
+            if lang == 'ru':
+                error_message = "⚠️ Произошла ошибка при обработке запроса.\n\nПопробуйте еще раз или обратитесь к администратору."
+            else:
+                error_message = "⚠️ An error occurred while processing your request.\n\nPlease try again or contact administrator."
+
+            # Add helpful hints for specific errors
             if context.error:
-                error_type = type(context.error).__name__
                 if "Database" in error_type or "SQL" in error_type:
-                    error_message += "\n\n💡 Database migration may be required. Run: python migrate_db.py"
+                    if lang == 'ru':
+                        error_message += "\n\n💡 Возможно требуется миграция БД: python upgrade_db.py"
+                    else:
+                        error_message += "\n\n💡 Database migration may be required: python upgrade_db.py"
                 elif "Connection" in error_type or "Network" in error_type:
-                    error_message += "\n\n💡 Connection problem. Check Redis and PostgreSQL."
+                    if lang == 'ru':
+                        error_message += "\n\n💡 Проблема с подключением. Проверьте Redis и PostgreSQL."
+                    else:
+                        error_message += "\n\n💡 Connection problem. Check Redis and PostgreSQL."
+                elif "Timeout" in error_type:
+                    if lang == 'ru':
+                        error_message += "\n\n💡 Превышено время ожидания. Попробуйте еще раз."
+                    else:
+                        error_message += "\n\n💡 Request timeout. Please try again."
 
-            await update.effective_message.reply_text(error_message)
+            # Try to send error message
+            if update.effective_message:
+                await update.effective_message.reply_text(error_message)
+            elif update.callback_query:
+                await update.callback_query.answer(error_message, show_alert=True)
+
     except Exception as e:
-        logger.error(f"❌ Failed to send error message to user: {e}")
+        logger.error(f"❌ Failed to send error message to user: {e}", exc_info=e)
 
 def main() -> None:
     global app_instance, startup_start_time

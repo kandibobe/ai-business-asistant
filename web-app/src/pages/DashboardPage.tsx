@@ -42,7 +42,6 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { analyticsApi } from '@/api/services'
-import { gradients } from '@/theme'
 
 interface DashboardStats {
   total_questions: number
@@ -76,8 +75,17 @@ export default function DashboardPage() {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await analyticsApi.getDashboardStats()
-      setStats(response as any)
+      const response = await analyticsApi.getUserStats()
+      setStats({
+        total_questions: response.total_questions,
+        total_documents: response.total_documents,
+        avg_response_time: response.avg_response_time_ms || 0,
+        documents_today: 0,
+        questions_today: 0,
+        activity_chart: [],
+        recent_documents: [],
+        is_premium: user?.role === 'premium' || false,
+      })
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error)
     } finally {

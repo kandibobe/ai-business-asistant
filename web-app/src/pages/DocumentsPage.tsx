@@ -14,15 +14,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  InputAdornment,
-  Stack,
-  Menu,
-  MenuItem,
-  Tooltip,
-  alpha,
-  Fade,
-  Paper,
 } from '@mui/material'
 import {
   CloudUpload,
@@ -64,10 +55,7 @@ export default function DocumentsPage() {
   const { documents, isUploading, uploadProgress, activeDocument, error } = useSelector(
     (state: RootState) => state.documents
   )
-
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState<string>('all')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
     documentId: number | null
@@ -80,25 +68,7 @@ export default function DocumentsPage() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [selectedDoc, setSelectedDoc] = useState<number | null>(null)
 
-  // Drag & Drop setup
-  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'text/csv': ['.csv'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/msword': ['.doc'],
-      'audio/mpeg': ['.mp3'],
-      'audio/wav': ['.wav'],
-      'text/plain': ['.txt'],
-    },
-    maxSize: 50 * 1024 * 1024, // 50MB
-    onDrop: (acceptedFiles) => {
-      setSelectedFiles(acceptedFiles)
-    },
-  })
-
+  // Load documents on mount
   useEffect(() => {
     loadDocuments()
   }, [])
@@ -119,6 +89,26 @@ export default function DocumentsPage() {
       }
     } catch (error: any) {
       dispatch(fetchDocumentsFailure(error.message))
+    }
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0]
+
+      // Validate file size (50MB max)
+      const maxSize = 50 * 1024 * 1024
+      if (file.size > maxSize) {
+        dispatch(
+          showSnackbar({
+            message: 'File size exceeds 50MB limit',
+            severity: 'error',
+          })
+        )
+        return
+      }
+
+      setSelectedFile(file)
     }
   }
 
@@ -184,7 +174,6 @@ export default function DocumentsPage() {
       documentId,
       documentName,
     })
-    handleMenuClose()
   }
 
   const handleDeleteConfirm = async () => {
@@ -530,147 +519,74 @@ export default function DocumentsPage() {
         ) : (
           filteredDocuments.map((doc: any) => (
             <Grid item xs={12} sm={6} md={4} key={doc.id}>
-              <Fade in>
-                <Card
-                  sx={{
-                    height: '100%',
-                    position: 'relative',
-                    border: activeDocument?.id === doc.id ? 3 : 0,
-                    borderColor: 'success.main',
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                    },
-                  }}
-                >
-                  {activeDocument?.id === doc.id && (
-                    <Chip
-                      label="Active"
-                      color="success"
-                      size="small"
-                      icon={<CheckCircle />}
-                      sx={{
-                        position: 'absolute',
-                        top: 16,
-                        right: 16,
-                        zIndex: 1,
-                      }}
-                    />
-                  )}
-
-                  <CardContent sx={{ p: 3 }}>
-                    <Box
-                      sx={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: 3,
-                        background: getDocumentColor(doc.document_type),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        mb: 2,
-                      }}
-                    >
+              <Card
+                sx={{
+                  position: 'relative',
+                  border: activeDocument?.id === doc.id ? '2px solid' : 'none',
+                  borderColor: 'primary.main',
+                }}
+              >
+                {activeDocument?.id === doc.id && (
+                  <Chip
+                    label="Active"
+                    color="primary"
+                    size="small"
+                    icon={<CheckCircle />}
+                    sx={{ position: 'absolute', top: 8, right: 8 }}
+                  />
+                )}
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ color: 'primary.main', mr: 2 }}>
                       {getDocumentIcon(doc.document_type)}
                     </Box>
-
-                    <Tooltip title={doc.file_name}>
-                      <Typography
-                        variant="h6"
-                        fontWeight={600}
-                        noWrap
-                        sx={{ mb: 1 }}
-                      >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" noWrap title={doc.file_name}>
                         {doc.file_name}
                       </Typography>
-                    </Tooltip>
-
-                    <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                      <Chip
-                        label={doc.document_type.toUpperCase()}
-                        size="small"
-                        sx={{ fontWeight: 600 }}
-                      />
-                      {doc.word_count && (
-                        <Chip
-                          label={`${doc.word_count} words`}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
-                    </Stack>
-
-                    <Stack spacing={0.5} sx={{ mb: 2 }}>
                       <Typography variant="caption" color="text.secondary">
-                        Size: {formatFileSize(doc.file_size)}
+                        {formatFileSize(doc.file_size || 0)}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Uploaded: {formatDate(doc.uploaded_at)}
-                      </Typography>
-                      {doc.language_detected && (
-                        <Typography variant="caption" color="text.secondary">
-                          Language: {doc.language_detected}
-                        </Typography>
-                      )}
-                    </Stack>
-
-                    <Stack direction="row" spacing={1}>
-                      {activeDocument?.id !== doc.id && (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          onClick={() => handleActivate(doc.id)}
-                          startIcon={<Visibility />}
-                          fullWidth
-                        >
-                          Activate
-                        </Button>
-                      )}
-                      <IconButton
+                    </Box>
+                  </Box>
+                  <Box sx={{ mb: 2 }}>
+                    <Chip
+                      label={doc.document_type.toUpperCase()}
+                      size="small"
+                      sx={{ mr: 1 }}
+                    />
+                    <Chip
+                      label={doc.status?.toUpperCase() || 'PENDING'}
+                      size="small"
+                      color={doc.status === 'processed' ? 'success' : 'default'}
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    {activeDocument?.id !== doc.id && (
+                      <Button
                         size="small"
-                        onClick={(e) => handleMenuOpen(e, doc.id)}
+                        variant="outlined"
+                        onClick={() => handleActivate(doc.id)}
+                        fullWidth
+                        startIcon={<Visibility />}
                       >
-                        <MoreVert />
-                      </IconButton>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Fade>
+                        Activate
+                      </Button>
+                    )}
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDeleteClick(doc.id, doc.file_name)}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </Box>
+                </CardContent>
+              </Card>
             </Grid>
           ))
         )}
       </Grid>
-
-      {/* Document Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={() => selectedDoc && handleActivate(selectedDoc)}>
-          <Visibility sx={{ mr: 1 }} fontSize="small" />
-          Activate
-        </MenuItem>
-        <MenuItem>
-          <Download sx={{ mr: 1 }} fontSize="small" />
-          Download
-        </MenuItem>
-        <MenuItem>
-          <Info sx={{ mr: 1 }} fontSize="small" />
-          Details
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            const doc = documents.find((d: any) => d.id === selectedDoc)
-            if (doc) handleDeleteClick(doc.id, doc.file_name)
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <Delete sx={{ mr: 1 }} fontSize="small" />
-          Delete
-        </MenuItem>
-      </Menu>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

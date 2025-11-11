@@ -34,20 +34,24 @@ class TestDocumentHandlers:
         mock_file.download_to_drive = AsyncMock()
         mock_telegram_context.bot.get_file = AsyncMock(return_value=mock_file)
 
-        # Mock celery task
-        with patch('handlers.documents.process_pdf_task') as mock_task:
-            mock_task.delay = MagicMock(return_value=None)
+        # Mock file validation to always pass
+        with patch('handlers.documents.validate_file') as mock_validate:
+            mock_validate.return_value = (True, None)
 
-            # Execute
-            await handle_document(mock_telegram_update, mock_telegram_context)
+            # Mock celery task
+            with patch('handlers.documents.process_pdf_task') as mock_task:
+                mock_task.delay = MagicMock(return_value=None)
 
-            # Verify bot responded
-            mock_telegram_update.message.reply_text.assert_called()
-            reply_text = mock_telegram_update.message.reply_text.call_args[0][0]
-            assert 'принят в работу' in reply_text or 'PDF' in reply_text
+                # Execute
+                await handle_document(mock_telegram_update, mock_telegram_context)
 
-            # Verify task was queued
-            mock_task.delay.assert_called_once()
+                # Verify bot responded
+                mock_telegram_update.message.reply_text.assert_called()
+                reply_text = mock_telegram_update.message.reply_text.call_args[0][0]
+                assert 'принят в работу' in reply_text or 'PDF' in reply_text
+
+                # Verify task was queued
+                mock_task.delay.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_handle_excel_document(
@@ -66,14 +70,18 @@ class TestDocumentHandlers:
         mock_file.download_to_drive = AsyncMock()
         mock_telegram_context.bot.get_file = AsyncMock(return_value=mock_file)
 
-        with patch('handlers.documents.process_excel_task') as mock_task:
-            mock_task.delay = MagicMock()
+        # Mock file validation to always pass
+        with patch('handlers.documents.validate_file') as mock_validate:
+            mock_validate.return_value = (True, None)
 
-            await handle_document(mock_telegram_update, mock_telegram_context)
+            with patch('handlers.documents.process_excel_task') as mock_task:
+                mock_task.delay = MagicMock()
 
-            mock_task.delay.assert_called_once()
-            reply_text = mock_telegram_update.message.reply_text.call_args[0][0]
-            assert 'Excel' in reply_text
+                await handle_document(mock_telegram_update, mock_telegram_context)
+
+                mock_task.delay.assert_called_once()
+                reply_text = mock_telegram_update.message.reply_text.call_args[0][0]
+                assert 'Excel' in reply_text
 
     @pytest.mark.asyncio
     async def test_handle_word_document(
@@ -92,14 +100,18 @@ class TestDocumentHandlers:
         mock_file.download_to_drive = AsyncMock()
         mock_telegram_context.bot.get_file = AsyncMock(return_value=mock_file)
 
-        with patch('handlers.documents.process_word_task') as mock_task:
-            mock_task.delay = MagicMock()
+        # Mock file validation to always pass
+        with patch('handlers.documents.validate_file') as mock_validate:
+            mock_validate.return_value = (True, None)
 
-            await handle_document(mock_telegram_update, mock_telegram_context)
+            with patch('handlers.documents.process_word_task') as mock_task:
+                mock_task.delay = MagicMock()
 
-            mock_task.delay.assert_called_once()
-            reply_text = mock_telegram_update.message.reply_text.call_args[0][0]
-            assert 'Word' in reply_text
+                await handle_document(mock_telegram_update, mock_telegram_context)
+
+                mock_task.delay.assert_called_once()
+                reply_text = mock_telegram_update.message.reply_text.call_args[0][0]
+                assert 'Word' in reply_text
 
     @pytest.mark.asyncio
     async def test_handle_unsupported_file_type(

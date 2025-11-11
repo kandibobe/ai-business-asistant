@@ -50,8 +50,8 @@ apiClient.interceptors.response.use(
           refresh_token: refreshToken,
         })
 
-        const { access_token, refresh_token } = response.data
-        store.dispatch(setTokens({ access_token, refresh_token }))
+        const { access_token, refresh_token, token_type = 'Bearer' } = response.data
+        store.dispatch(setTokens({ access_token, refresh_token, token_type }))
 
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${access_token}`

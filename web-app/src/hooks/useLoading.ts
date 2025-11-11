@@ -29,7 +29,7 @@ export function useLoading<T = any>(options: UseLoadingOptions = {}) {
     })
   }, [])
 
-  const stopLoading = useCallback((data?: T) => {
+  const stopLoading = useCallback((data?: any) => {
     setState({
       isLoading: false,
       error: null,

@@ -8,6 +8,7 @@ from alembic import context
 import os
 import sys
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +40,10 @@ DB_USER = os.getenv('DB_USER', 'ai_bot_user')
 DB_PASS = os.getenv('DB_PASS', 'password')
 DB_NAME = os.getenv('DB_NAME', 'ai_bot_db')
 
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# URL-encode credentials to handle special characters (including Cyrillic)
+db_user_encoded = quote_plus(DB_USER)
+db_pass_encoded = quote_plus(DB_PASS)
+DATABASE_URL = f"postgresql://{db_user_encoded}:{db_pass_encoded}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # Override sqlalchemy.url with our constructed URL
 config.set_main_option('sqlalchemy.url', DATABASE_URL)
