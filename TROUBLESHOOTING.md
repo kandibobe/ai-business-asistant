@@ -6,7 +6,43 @@
 
 ## 🚨 Частые проблемы и решения
 
-### 1. ❌ JWT_SECRET_KEY validation error
+### 1. ❌ CRITICAL: Missing email/password_hash columns
+
+**Ошибка:**
+```
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn)
+ОШИБКА: столбец users.email не существует
+```
+
+**Причина:** База данных не содержит поля `email` и `password_hash`, необходимые для веб-аутентификации
+
+**Решение (КРИТИЧНО!):**
+```bash
+# Запустите миграцию для добавления полей
+python add_web_user_fields.py
+```
+
+Скрипт автоматически:
+- ✅ Добавит колонку `email` (NULL для Telegram-пользователей)
+- ✅ Добавит колонку `password_hash` (NULL для Telegram-пользователей)
+- ✅ Создаст уникальный индекс на email (исключая NULL)
+- ✅ Безопасен для повторного запуска
+
+**Альтернатива (Alembic):**
+```bash
+# Если используете Alembic
+alembic upgrade head
+```
+
+**Проверка:**
+```bash
+# После миграции проверьте структуру таблицы
+psql -h localhost -U ai_bot_user -d ai_bot_db -c "\d users"
+```
+
+---
+
+### 2. ❌ JWT_SECRET_KEY validation error
 
 **Ошибка:**
 ```
@@ -44,7 +80,7 @@ python -m config.settings
 
 ---
 
-### 2. ❌ RBAC module error: NameError
+### 3. ❌ RBAC module error: NameError
 
 **Ошибка:**
 ```
@@ -62,7 +98,7 @@ python -c "from services.rbac import RBACService; print('✅ RBAC OK')"
 
 ---
 
-### 3. ❌ Database migration issues
+### 4. ❌ Database migration issues
 
 **Ошибка:**
 ```
@@ -83,7 +119,7 @@ python add_role_field_migration.py
 
 ---
 
-### 4. ❌ Тесты падают
+### 5. ❌ Тесты падают
 
 **Проблема:** 6 failed tests при запуске pytest
 
@@ -111,7 +147,7 @@ pytest tests/unit/ -v
 
 ---
 
-### 5. ❌ ModuleNotFoundError
+### 6. ❌ ModuleNotFoundError
 
 **Ошибка:**
 ```
@@ -137,7 +173,7 @@ poetry shell
 
 ---
 
-### 6. ❌ LLM Service cannot initialize
+### 7. ❌ LLM Service cannot initialize
 
 **Ошибка:**
 ```
@@ -160,7 +196,7 @@ python -c "import os; from dotenv import load_dotenv; load_dotenv(); print('GEMI
 
 ---
 
-### 7. ❌ Celery worker не запускается
+### 8. ❌ Celery worker не запускается
 
 **Windows:**
 ```bash
@@ -181,7 +217,7 @@ redis-cli ping
 
 ---
 
-### 8. ❌ PostgreSQL connection refused
+### 9. ❌ PostgreSQL connection refused
 
 **Ошибка:**
 ```
@@ -211,7 +247,7 @@ DB_NAME=ai_bot_db
 
 ---
 
-### 9. ⚠️ Deprecation warnings
+### 10. ⚠️ Deprecation warnings
 
 **Warning:**
 ```
@@ -226,7 +262,25 @@ DeprecationWarning: datetime.datetime.utcnow() is deprecated
 
 ---
 
-### 10. ❌ python-magic not available
+### 11. ❌ Health check database error
+
+**Ошибка:**
+```
+TypeError: Not an executable object: 'SELECT 1'
+```
+
+**Причина:** SQLAlchemy 2.0 требует обертывания сырых SQL-запросов в `text()`
+
+**Решение:** ✅ Уже исправлено в последнем коммите
+
+**Проверка:**
+```bash
+python -c "from utils.health_check import get_health_status; import json; print(json.dumps(get_health_status(), indent=2))"
+```
+
+---
+
+### 12. ❌ python-magic not available
 
 **Warning:**
 ```
