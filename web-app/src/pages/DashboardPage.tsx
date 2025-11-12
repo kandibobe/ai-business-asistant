@@ -42,6 +42,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { analyticsApi } from '@/api/services'
+import StatsCards from '@/components/analytics/StatsCards'
 
 interface DashboardStats {
   total_questions: number

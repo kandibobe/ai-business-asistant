@@ -8,15 +8,14 @@ import {
   CardContent,
   IconButton,
   Chip,
-  LinearProgress,
   Alert,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  Fade,
 } from '@mui/material'
 import {
-  CloudUpload,
   Description,
   PictureAsPdf,
   TableChart,
@@ -52,10 +51,10 @@ import { gradients } from '@/theme'
 
 export default function DocumentsPage() {
   const dispatch = useDispatch()
-  const { documents, isUploading, uploadProgress, activeDocument, error } = useSelector(
+  const toast = useToast()
+  const { documents, activeDocument, error } = useSelector(
     (state: RootState) => state.documents
   )
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
     documentId: number | null
@@ -519,70 +518,89 @@ export default function DocumentsPage() {
         ) : (
           filteredDocuments.map((doc: any) => (
             <Grid item xs={12} sm={6} md={4} key={doc.id}>
-              <Card
-                sx={{
-                  position: 'relative',
-                  border: activeDocument?.id === doc.id ? '2px solid' : 'none',
-                  borderColor: 'primary.main',
-                }}
-              >
-                {activeDocument?.id === doc.id && (
-                  <Chip
-                    label="Active"
-                    color="primary"
-                    size="small"
-                    icon={<CheckCircle />}
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
-                  />
-                )}
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box sx={{ color: 'primary.main', mr: 2 }}>
-                      {getDocumentIcon(doc.document_type)}
-                    </Box>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" noWrap title={doc.file_name}>
-                        {doc.file_name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatFileSize(doc.file_size || 0)}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ mb: 2 }}>
+              <Fade in={true} timeout={1200 + index * 100}>
+                <Card
+                  sx={{
+                    position: 'relative',
+                    border: activeDocument?.id === doc.id ? '2px solid' : 'none',
+                    borderColor: 'primary.main',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    },
+                  }}
+                >
+                  {activeDocument?.id === doc.id && (
                     <Chip
-                      label={doc.document_type.toUpperCase()}
+                      label="Active"
+                      color="primary"
                       size="small"
-                      sx={{ mr: 1 }}
+                      icon={<CheckCircle />}
+                      sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
                     />
-                    <Chip
-                      label={doc.status?.toUpperCase() || 'PENDING'}
-                      size="small"
-                      color={doc.status === 'processed' ? 'success' : 'default'}
-                    />
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    {activeDocument?.id !== doc.id && (
-                      <Button
+                  )}
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Box sx={{ color: 'primary.main', mr: 2 }}>
+                        {getDocumentIcon(doc.document_type)}
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" noWrap title={doc.file_name}>
+                          {doc.file_name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatFileSize(doc.file_size || 0)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Chip
+                        label={doc.document_type.toUpperCase()}
                         size="small"
-                        variant="outlined"
-                        onClick={() => handleActivate(doc.id)}
-                        fullWidth
-                        startIcon={<Visibility />}
+                        sx={{ mr: 1 }}
+                      />
+                      <Chip
+                        label={doc.status?.toUpperCase() || 'PENDING'}
+                        size="small"
+                        color={doc.status === 'processed' ? 'success' : 'default'}
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {activeDocument?.id !== doc.id && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleActivate(doc.id)}
+                          fullWidth
+                          startIcon={<Visibility />}
+                          sx={{
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              transform: 'scale(1.05)',
+                            },
+                          }}
+                        >
+                          Activate
+                        </Button>
+                      )}
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteClick(doc.id, doc.file_name)}
+                        sx={{
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                          },
+                        }}
                       >
-                        Activate
-                      </Button>
-                    )}
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteClick(doc.id, doc.file_name)}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Box>
-                </CardContent>
-              </Card>
+                        <Delete />
+                      </IconButton>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Fade>
             </Grid>
           ))
         )}
