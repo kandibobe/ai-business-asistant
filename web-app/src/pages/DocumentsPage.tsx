@@ -8,15 +8,14 @@ import {
   CardContent,
   IconButton,
   Chip,
-  LinearProgress,
   Alert,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  Fade,
 } from '@mui/material'
 import {
-  CloudUpload,
   Description,
   PictureAsPdf,
   TableChart,
@@ -41,13 +40,15 @@ import {
 } from '@/store/slices/documentsSlice'
 import { showSnackbar } from '@/store/slices/uiSlice'
 import { documentsApi } from '@/api/services'
+import FileUpload from '@/components/upload/FileUpload'
+import { useToast } from '@/components/feedback/Toast'
 
 export default function DocumentsPage() {
   const dispatch = useDispatch()
-  const { documents, isUploading, uploadProgress, activeDocument, error } = useSelector(
+  const toast = useToast()
+  const { documents, activeDocument, error } = useSelector(
     (state: RootState) => state.documents
   )
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
     documentId: number | null
@@ -83,54 +84,23 @@ export default function DocumentsPage() {
     }
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0]
+  const handleUpload = async (files: File[]) => {
+    for (const file of files) {
+      try {
+        dispatch(uploadStart())
+        const document = await documentsApi.upload(file, (progress) => {
+          dispatch(setUploadProgress(progress))
+        })
 
-      // Validate file size (50MB max)
-      const maxSize = 50 * 1024 * 1024
-      if (file.size > maxSize) {
-        dispatch(
-          showSnackbar({
-            message: 'File size exceeds 50MB limit',
-            severity: 'error',
-          })
-        )
-        return
+        dispatch(uploadSuccess(document))
+        toast.success(`${file.name} uploaded successfully!`)
+
+        // Reload documents to get updated list
+        loadDocuments()
+      } catch (error: any) {
+        dispatch(uploadFailure(error.message))
+        toast.error(`Upload failed: ${error.message}`)
       }
-
-      setSelectedFile(file)
-    }
-  }
-
-  const handleUpload = async () => {
-    if (!selectedFile) return
-
-    try {
-      dispatch(uploadStart())
-      const document = await documentsApi.upload(selectedFile, (progress) => {
-        dispatch(setUploadProgress(progress))
-      })
-
-      dispatch(uploadSuccess(document))
-      dispatch(
-        showSnackbar({
-          message: 'Document uploaded successfully!',
-          severity: 'success',
-        })
-      )
-      setSelectedFile(null)
-
-      // Reload documents to get updated list
-      loadDocuments()
-    } catch (error: any) {
-      dispatch(uploadFailure(error.message))
-      dispatch(
-        showSnackbar({
-          message: `Upload failed: ${error.message}`,
-          severity: 'error',
-        })
-      )
     }
   }
 
@@ -211,14 +181,16 @@ export default function DocumentsPage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Documents
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Upload and manage your business documents for AI analysis
-        </Typography>
-      </Box>
+      <Fade in={true} timeout={600}>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" fontWeight={700} gutterBottom>
+            📂 Documents
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Upload and manage your business documents for AI analysis
+          </Typography>
+        </Box>
+      </Fade>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => dispatch(fetchDocumentsFailure(''))}>
@@ -226,165 +198,123 @@ export default function DocumentsPage() {
         </Alert>
       )}
 
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Upload New Document
-          </Typography>
-          <Box
-            sx={{
-              border: '2px dashed',
-              borderColor: 'divider',
-              borderRadius: 2,
-              p: 4,
-              textAlign: 'center',
-              mt: 2,
-            }}
-          >
-            <CloudUpload sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="body1" gutterBottom>
-              Drag and drop files here or click to browse
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Supported formats: PDF, Excel, Word, Audio, Text (Max: 50MB)
-            </Typography>
-            <Button
-              variant="contained"
-              component="label"
-              sx={{ mt: 2 }}
-              disabled={isUploading}
-            >
-              Select File
-              <input
-                type="file"
-                hidden
-                onChange={handleFileSelect}
-                accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.mp3,.wav,.txt"
-              />
-            </Button>
-            {selectedFile && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" fontWeight={600}>
-                  Selected: {selectedFile.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatFileSize(selectedFile.size)}
-                </Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleUpload}
-                    disabled={isUploading}
-                  >
-                    Upload
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => setSelectedFile(null)}
-                    sx={{ ml: 1 }}
-                    disabled={isUploading}
-                  >
-                    Cancel
-                  </Button>
-                </Box>
-              </Box>
-            )}
-            {isUploading && (
-              <Box sx={{ mt: 2 }}>
-                <LinearProgress variant="determinate" value={uploadProgress} />
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Uploading... {uploadProgress}%
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </CardContent>
-      </Card>
+      <Fade in={true} timeout={800}>
+        <Box sx={{ mb: 4 }}>
+          <FileUpload
+            onUpload={handleUpload}
+            accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.mp3,.wav,.txt"
+            maxSize={50}
+            multiple={true}
+          />
+        </Box>
+      </Fade>
 
-      <Typography variant="h6" fontWeight={600} gutterBottom>
-        Your Documents ({documents.length})
-      </Typography>
+      <Fade in={true} timeout={1000}>
+        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 4 }}>
+          Your Documents ({documents.length})
+        </Typography>
+      </Fade>
 
       <Grid container spacing={3}>
         {documents.length === 0 ? (
           <Grid item xs={12}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                <Description sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="body1" color="text.secondary">
-                  No documents uploaded yet. Upload your first document to get started!
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ) : (
-          documents.map((doc) => (
-            <Grid item xs={12} sm={6} md={4} key={doc.id}>
-              <Card
-                sx={{
-                  position: 'relative',
-                  border: activeDocument?.id === doc.id ? '2px solid' : 'none',
-                  borderColor: 'primary.main',
-                }}
-              >
-                {activeDocument?.id === doc.id && (
-                  <Chip
-                    label="Active"
-                    color="primary"
-                    size="small"
-                    icon={<CheckCircle />}
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
-                  />
-                )}
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Box sx={{ color: 'primary.main', mr: 2 }}>
-                      {getDocumentIcon(doc.document_type)}
-                    </Box>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" noWrap title={doc.file_name}>
-                        {doc.file_name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatFileSize(doc.file_size || 0)}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ mb: 2 }}>
-                    <Chip
-                      label={doc.document_type.toUpperCase()}
-                      size="small"
-                      sx={{ mr: 1 }}
-                    />
-                    <Chip
-                      label={doc.status?.toUpperCase() || 'PENDING'}
-                      size="small"
-                      color={doc.status === 'processed' ? 'success' : 'default'}
-                    />
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    {activeDocument?.id !== doc.id && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => handleActivate(doc.id)}
-                        fullWidth
-                        startIcon={<Visibility />}
-                      >
-                        Activate
-                      </Button>
-                    )}
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteClick(doc.id, doc.file_name)}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Box>
+            <Fade in={true} timeout={1200}>
+              <Card>
+                <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                  <Description sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    No documents uploaded yet. Upload your first document to get started!
+                  </Typography>
                 </CardContent>
               </Card>
+            </Fade>
+          </Grid>
+        ) : (
+          documents.map((doc, index) => (
+            <Grid item xs={12} sm={6} md={4} key={doc.id}>
+              <Fade in={true} timeout={1200 + index * 100}>
+                <Card
+                  sx={{
+                    position: 'relative',
+                    border: activeDocument?.id === doc.id ? '2px solid' : 'none',
+                    borderColor: 'primary.main',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    },
+                  }}
+                >
+                  {activeDocument?.id === doc.id && (
+                    <Chip
+                      label="Active"
+                      color="primary"
+                      size="small"
+                      icon={<CheckCircle />}
+                      sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
+                    />
+                  )}
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Box sx={{ color: 'primary.main', mr: 2 }}>
+                        {getDocumentIcon(doc.document_type)}
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" noWrap title={doc.file_name}>
+                          {doc.file_name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatFileSize(doc.file_size || 0)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Chip
+                        label={doc.document_type.toUpperCase()}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      />
+                      <Chip
+                        label={doc.status?.toUpperCase() || 'PENDING'}
+                        size="small"
+                        color={doc.status === 'processed' ? 'success' : 'default'}
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {activeDocument?.id !== doc.id && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleActivate(doc.id)}
+                          fullWidth
+                          startIcon={<Visibility />}
+                          sx={{
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              transform: 'scale(1.05)',
+                            },
+                          }}
+                        >
+                          Activate
+                        </Button>
+                      )}
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteClick(doc.id, doc.file_name)}
+                        sx={{
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                          },
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Fade>
             </Grid>
           ))
         )}

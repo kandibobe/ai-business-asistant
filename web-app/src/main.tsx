@@ -7,6 +7,7 @@ import { SnackbarProvider } from 'notistack'
 import App from './App'
 import { store, RootState } from './store'
 import { getTheme } from './theme'
+import { ToastProvider } from './components/feedback/Toast'
 import './index.css'
 
 function ThemedApp() {
@@ -16,15 +17,17 @@ function ThemedApp() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <SnackbarProvider
-        maxSnack={3}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <App />
-      </SnackbarProvider>
+      <ToastProvider>
+        <SnackbarProvider
+          maxSnack={3}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <App />
+        </SnackbarProvider>
+      </ToastProvider>
     </ThemeProvider>
   )
 }

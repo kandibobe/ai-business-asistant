@@ -8,6 +8,7 @@ import {
   Button,
   LinearProgress,
   Chip,
+  Fade,
 } from '@mui/material'
 import {
   TrendingUp,
@@ -21,6 +22,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { RootState } from '@/store'
 import { analyticsApi } from '@/api/services'
+import StatsCards from '@/components/analytics/StatsCards'
 
 interface DashboardStats {
   total_questions: number
@@ -109,169 +111,228 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Welcome back, {user?.first_name || user?.username}!
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Here's an overview of your AI business intelligence activities
-          </Typography>
+      <Fade in={true} timeout={800}>
+        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h4" fontWeight={700} gutterBottom>
+              Welcome back, {user?.first_name || user?.username}! 👋
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Here's an overview of your AI business intelligence activities
+            </Typography>
+          </Box>
+          {user?.is_premium && (
+            <Chip
+              label="✨ Premium"
+              color="primary"
+              icon={<TrendingUp />}
+              sx={{
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                height: 36,
+                px: 1,
+              }}
+            />
+          )}
         </Box>
-        {user?.is_premium && (
-          <Chip
-            label="Premium"
-            color="primary"
-            icon={<TrendingUp />}
-            sx={{ fontWeight: 600 }}
-          />
-        )}
-      </Box>
+      </Fade>
 
-      <Grid container spacing={3}>
-        {statCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+      <Fade in={true} timeout={1000}>
+        <Box>
+          <StatsCards
+            totalDocuments={stats.total_documents}
+            questionsAsked={stats.total_questions}
+            avgResponseTime={stats.avg_response_time ? `${(stats.avg_response_time / 1000).toFixed(2)}s` : 'N/A'}
+            accuracy={95}
+          />
+        </Box>
+      </Fade>
+
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid item xs={12} md={6}>
+          <Fade in={true} timeout={1200}>
             <Card
               sx={{
-                height: '100%',
-                transition: 'transform 0.2s',
+                transition: 'all 0.3s ease',
                 '&:hover': {
                   transform: 'translateY(-4px)',
+                  boxShadow: 6,
                 },
               }}
             >
               <CardContent>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    mb: 2,
-                  }}
-                >
-                  <Typography variant="h6" color="text.secondary">
-                    {card.title}
-                  </Typography>
-                  <Box sx={{ color: card.color }}>{card.icon}</Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  🚀 Quick Actions
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<Upload />}
+                    onClick={() => navigate('/documents')}
+                    fullWidth
+                    sx={{
+                      py: 1.5,
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.02)',
+                        boxShadow: 4,
+                      },
+                    }}
+                  >
+                    Upload Document
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<Chat />}
+                    onClick={() => navigate('/chat')}
+                    fullWidth
+                    sx={{
+                      py: 1.5,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.02)',
+                      },
+                    }}
+                  >
+                    Start AI Chat
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<TrendingUp />}
+                    onClick={() => navigate('/analytics')}
+                    fullWidth
+                    sx={{
+                      py: 1.5,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'scale(1.02)',
+                      },
+                    }}
+                  >
+                    View Analytics
+                  </Button>
                 </Box>
-                <Typography variant="h3" fontWeight={700} gutterBottom>
-                  {card.value}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {card.subtitle}
-                </Typography>
               </CardContent>
             </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
-                Quick Actions
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<Upload />}
-                  onClick={() => navigate('/documents')}
-                  fullWidth
-                >
-                  Upload Document
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<Chat />}
-                  onClick={() => navigate('/chat')}
-                  fullWidth
-                >
-                  Start AI Chat
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<TrendingUp />}
-                  onClick={() => navigate('/analytics')}
-                  fullWidth
-                >
-                  View Analytics
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
+          </Fade>
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
-                Recent Documents
-              </Typography>
-              <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {stats.recent_documents.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    No documents uploaded yet
-                  </Typography>
-                ) : (
-                  stats.recent_documents.map((doc) => (
-                    <Box
-                      key={doc.id}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1,
-                        borderRadius: 1,
-                        '&:hover': { backgroundColor: 'action.hover' },
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Description color="primary" />
-                        <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
-                          {doc.file_name}
-                        </Typography>
-                      </Box>
-                      {doc.is_active && (
-                        <Chip label="Active" size="small" color="primary" />
-                      )}
+          <Fade in={true} timeout={1400}>
+            <Card
+              sx={{
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                },
+              }}
+            >
+              <CardContent>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  📄 Recent Documents
+                </Typography>
+                <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {stats.recent_documents.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 3 }}>
+                      <Description sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        No documents uploaded yet
+                      </Typography>
                     </Box>
-                  ))
-                )}
-              </Box>
-            </CardContent>
-          </Card>
+                  ) : (
+                    stats.recent_documents.map((doc) => (
+                      <Box
+                        key={doc.id}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          p: 1.5,
+                          borderRadius: 1,
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            backgroundColor: 'action.hover',
+                            transform: 'translateX(4px)',
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Description color="primary" />
+                          <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                            {doc.file_name}
+                          </Typography>
+                        </Box>
+                        {doc.is_active && (
+                          <Chip label="Active" size="small" color="primary" />
+                        )}
+                      </Box>
+                    ))
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Fade>
         </Grid>
       </Grid>
 
       {!user?.is_premium && (
-        <Card sx={{ mt: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-          <CardContent>
-            <Box sx={{ color: 'white', textAlign: 'center', py: 2 }}>
-              <Typography variant="h5" fontWeight={700} gutterBottom>
-                Upgrade to Premium
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 3 }}>
-                Unlock unlimited documents, faster processing, and advanced analytics
-              </Typography>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => navigate('/premium')}
-                sx={{
-                  backgroundColor: 'white',
-                  color: '#667eea',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.9)',
-                  },
-                }}
-              >
-                Learn More
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
+        <Fade in={true} timeout={1600}>
+          <Card
+            sx={{
+              mt: 3,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              position: 'relative',
+              overflow: 'hidden',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: 8,
+              },
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.1), transparent)',
+              },
+            }}
+          >
+            <CardContent>
+              <Box sx={{ color: 'white', textAlign: 'center', py: 2, position: 'relative' }}>
+                <Typography variant="h5" fontWeight={700} gutterBottom>
+                  ✨ Upgrade to Premium
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 3, opacity: 0.95 }}>
+                  Unlock unlimited documents, faster processing, and advanced analytics
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={() => navigate('/premium')}
+                  sx={{
+                    backgroundColor: 'white',
+                    color: '#667eea',
+                    fontWeight: 600,
+                    px: 4,
+                    py: 1.5,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.95)',
+                      transform: 'scale(1.05)',
+                      boxShadow: 4,
+                    },
+                  }}
+                >
+                  Learn More
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Fade>
       )}
     </Box>
   )
