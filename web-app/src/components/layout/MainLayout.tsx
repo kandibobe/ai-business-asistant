@@ -40,12 +40,12 @@ import { updateTheme } from '@/store/slices/settingsSlice'
 const DRAWER_WIDTH = 260
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Documents', icon: <DocumentsIcon />, path: '/documents' },
-  { text: 'AI Chat', icon: <ChatIcon />, path: '/chat' },
-  { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
-  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
-  { text: 'Premium', icon: <PremiumIcon />, path: '/premium' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/app/dashboard' },
+  { text: 'Documents', icon: <DocumentsIcon />, path: '/app/documents' },
+  { text: 'AI Chat', icon: <ChatIcon />, path: '/app/chat' },
+  { text: 'Analytics', icon: <AnalyticsIcon />, path: '/app/analytics' },
+  { text: 'Settings', icon: <SettingsIcon />, path: '/app/settings' },
+  { text: 'Premium', icon: <PremiumIcon />, path: '/app/premium' },
 ]
 
 export default function MainLayout() {

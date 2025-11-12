@@ -1,0 +1,292 @@
+# ==============================================================================
+# Pre-commit hooks configuration for AI Business Assistant
+# ==============================================================================
+#
+# Automatically runs code quality checks before each commit:
+# - Code formatting (black, isort)
+# - Linting (flake8, pylint)
+# - Type checking (mypy)
+# - Security checks
+# - File validation
+#
+# Installation:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Run manually on all files:
+#   pre-commit run --all-files
+#
+# Skip hooks for a specific commit (use sparingly!):
+#   git commit --no-verify
+# ==============================================================================
+
+default_language_version:
+  python: python3.10
+
+repos:
+  # ==============================================================================
+  # GENERAL FILE CHECKS
+  # ==============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent committing large files
+      - id: check-added-large-files
+        args: ['--maxkb=10000']  # 10MB max
+        exclude: ^(postgres_data/|redis_data/|web-app/node_modules/)
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        exclude: ^(postgres_data/|redis_data/|\.venv/|web-app/)
+
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        exclude: ^(postgres_data/|redis_data/|\.venv/|web-app/)
+        args: [--markdown-linebreak-ext=md]
+
+      # Check YAML syntax
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom YAML tags
+        exclude: ^(\.github/workflows/|k8s/|helm/)
+
+      # Check TOML syntax
+      - id: check-toml
+
+      # Check JSON syntax
+      - id: check-json
+        exclude: ^(web-app/|\.vscode/)
+
+      # Detect private keys
+      - id: detect-private-key
+
+      # Check for merge conflicts
+      - id: check-merge-conflict
+
+      # Check case conflicts (important for case-sensitive filesystems)
+      - id: check-case-conflict
+
+      # Prevent committing to main branch directly
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+      # Check Python AST validity
+      - id: check-ast
+
+      # Check for debugger imports
+      - id: debug-statements
+
+      # Mixed line endings check
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # ==============================================================================
+  # PYTHON CODE FORMATTING
+  # ==============================================================================
+
+  # Black - The uncompromising Python code formatter
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        name: Format code with black
+        language_version: python3.10
+        args: ['--line-length=100']
+        exclude: ^(\.venv/|postgres_data/|redis_data/|web-app/|alembic/versions/)
+
+  # isort - Sort Python imports
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: Sort imports with isort
+        args: ['--profile', 'black', '--line-length', '100']
+        exclude: ^(\.venv/|postgres_data/|redis_data/|web-app/|alembic/versions/)
+
+  # ==============================================================================
+  # PYTHON LINTING
+  # ==============================================================================
+
+  # Flake8 - Python linting
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        name: Lint code with flake8
+        args: [
+          '--max-line-length=100',
+          '--extend-ignore=E203,E501,W503,E402',  # Black compatibility
+          '--max-complexity=15',
+          '--exclude=.venv,postgres_data,redis_data,web-app,alembic/versions',
+        ]
+        additional_dependencies: [
+          'flake8-docstrings',
+          'flake8-bugbear',
+          'flake8-comprehensions',
+          'flake8-simplify',
+        ]
+        exclude: ^(\.venv/|postgres_data/|redis_data/|web-app/|alembic/versions/|tests/)
+
+  # Pylint - More thorough Python linting
+  - repo: https://github.com/PyCQA/pylint
+    rev: v3.0.3
+    hooks:
+      - id: pylint
+        name: Lint code with pylint
+        args: [
+          '--max-line-length=100',
+          '--disable=C0111,C0103,R0903,R0913,W0212',  # Same as pyproject.toml
+          '--max-args=8',
+          '--max-attributes=10',
+        ]
+        exclude: ^(\.venv/|postgres_data/|redis_data/|web-app/|alembic/versions/|tests/)
+        # Only run on changed Python files (pylint is slow)
+        files: \.(py)$
+
+  # ==============================================================================
+  # TYPE CHECKING
+  # ==============================================================================
+
+  # Mypy - Static type checker
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: Type check with mypy
+        args: [
+          '--ignore-missing-imports',
+          '--no-implicit-optional',
+          '--warn-redundant-casts',
+          '--warn-unused-ignores',
+          '--check-untyped-defs',
+        ]
+        additional_dependencies: [
+          'pydantic>=2.0',
+          'sqlalchemy>=2.0',
+          'types-requests',
+          'types-redis',
+        ]
+        exclude: ^(\.venv/|postgres_data/|redis_data/|web-app/|alembic/versions/|tests/)
+
+  # ==============================================================================
+  # SECURITY CHECKS
+  # ==============================================================================
+
+  # Bandit - Security linter
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        name: Security check with bandit
+        args: [
+          '-ll',  # Only show high severity and high confidence issues
+          '--recursive',
+          '--exclude', '.venv,postgres_data,redis_data,web-app,tests',
+        ]
+        exclude: ^(\.venv/|postgres_data/|redis_data/|web-app/|tests/)
+
+  # Safety - Check for known security vulnerabilities in dependencies
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.3
+    hooks:
+      - id: python-safety-dependencies-check
+        name: Check dependencies for vulnerabilities
+        files: requirements\.txt$
+
+  # ==============================================================================
+  # SECRETS DETECTION
+  # ==============================================================================
+
+  # Detect secrets - Prevent committing secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect secrets
+        args: [
+          '--baseline', '.secrets.baseline',
+          '--exclude-files', '\.venv/|postgres_data/|redis_data/|web-app/|\.git/',
+        ]
+        exclude: ^(\.venv/|postgres_data/|redis_data/|web-app/|package-lock\.json)
+
+  # ==============================================================================
+  # DOCUMENTATION
+  # ==============================================================================
+
+  # Check Markdown files
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.17
+    hooks:
+      - id: mdformat
+        name: Format Markdown files
+        args: ['--wrap', '100']
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-black
+        exclude: ^(web-app/|CHANGELOG\.md)
+
+  # ==============================================================================
+  # DOCKER
+  # ==============================================================================
+
+  # Hadolint - Dockerfile linter
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: Lint Dockerfiles
+        args: ['--ignore', 'DL3008', '--ignore', 'DL3013']
+
+  # ==============================================================================
+  # CUSTOM LOCAL HOOKS
+  # ==============================================================================
+
+  - repo: local
+    hooks:
+      # Run tests before commit (optional - can be slow)
+      # Uncomment if you want to run tests on every commit
+      # - id: pytest
+      #   name: Run pytest
+      #   entry: pytest
+      #   language: system
+      #   pass_filenames: false
+      #   always_run: true
+      #   stages: [commit]
+
+      # Check for TODO/FIXME comments (warning only)
+      - id: check-todos
+        name: Check for TODO/FIXME comments
+        entry: bash -c 'grep -rn "TODO\|FIXME" --include="*.py" . || exit 0'
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+
+      # Validate environment variables
+      - id: check-env-example
+        name: Validate .env.example
+        entry: python -c "from pathlib import Path; import sys; sys.exit(0 if Path('.env.example').exists() else 1)"
+        language: system
+        pass_filenames: false
+        always_run: true
+
+# ==============================================================================
+# CONFIGURATION NOTES
+# ==============================================================================
+#
+# Performance Tips:
+# - Pre-commit runs only on staged files by default
+# - Use 'files' and 'exclude' patterns to limit scope
+# - Some hooks (like pylint, mypy) can be slow - consider running selectively
+#
+# Bypassing Hooks:
+# - For urgent fixes: git commit --no-verify
+# - Only bypass when absolutely necessary!
+#
+# Updating Hooks:
+# - pre-commit autoupdate
+#
+# Troubleshooting:
+# - Clear cache: pre-commit clean
+# - Reinstall: pre-commit uninstall && pre-commit install
+#
+# ==============================================================================

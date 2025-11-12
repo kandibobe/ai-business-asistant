@@ -1,32 +1,39 @@
 # docker-compose.yml
-
-version: '3.8' # Указываем версию синтаксиса docker-compose
+# Development configuration for AI Business Intelligence Agent
 
 services:
-  # --- Сервис №1: База данных PostgreSQL ---
+  # --- Service #1: PostgreSQL Database ---
   db:
-    image: postgres:16-alpine  # Используем официальный, легковесный образ PostgreSQL 16
+    image: postgres:16-alpine
     container_name: ai_bot_postgres_db
-    restart: always # Всегда перезапускать контейнер, если он упал
+    restart: unless-stopped
     environment:
-      # Эти переменные окружения используются образом postgres для первоначальной настройки
-      POSTGRES_USER: ${DB_USER}       # Берем имя пользователя из нашего .env файла
-      POSTGRES_PASSWORD: ${DB_PASS}   # Берем пароль из нашего .env файла
-      POSTGRES_DB: ${DB_NAME}         # Берем имя базы из нашего .env файла
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+      # Performance tuning
+      POSTGRES_MAX_CONNECTIONS: 100
+      POSTGRES_SHARED_BUFFERS: 256MB
     ports:
-      # Пробрасываем порт 5432 из контейнера на порт 5432 нашего компьютера.
-      # Формат: <порт на твоем ПК>:<порт внутри контейнера>
       - "5432:5432"
     volumes:
-      # Эта строка "сохраняет" данные базы данных на твоем компьютере.
-      # Даже если ты удалишь контейнер, данные останутся в папке postgres_data.
-      - ./postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups  # For database backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai_bot_network
 
-  # --- Сервис №2: Брокер сообщений Redis ---
+  # --- Service #2: Redis Cache & Message Broker ---
   redis:
     image: redis:7-alpine
     container_name: ai_bot_redis
-    restart: always
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
     ports:
       - "6379:6379"
     volumes:
@@ -36,47 +43,113 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 5s
+    networks:
+      - ai_bot_network
 
-  # --- Сервис №3: Telegram Bot ---
+  # --- Service #3: FastAPI REST API ---
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    container_name: ai_bot_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./logs:/app/logs
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://redis:6379/0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ai_bot_network
+
+  # --- Service #4: Telegram Bot ---
   bot:
     build:
       context: .
       dockerfile: Dockerfile
+      target: bot
     container_name: ai_bot_app
-    restart: always
+    restart: unless-stopped
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       redis:
+        condition: service_healthy
+      api:
         condition: service_healthy
     env_file:
       - .env
     volumes:
       - ./downloads:/app/downloads
+      - ./logs:/app/logs
     environment:
       DB_HOST: db
       REDIS_URL: redis://redis:6379/0
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ai_bot_network
 
-  # --- Сервис №4: Celery Worker ---
+  # --- Service #5: Celery Worker ---
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
     container_name: ai_bot_worker
-    restart: always
+    restart: unless-stopped
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
     env_file:
       - .env
     volumes:
       - ./downloads:/app/downloads
+      - ./logs:/app/logs
     environment:
       DB_HOST: db
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ai_bot_network
 
+# Named volumes for data persistence
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+
+# Custom network for service communication
+networks:
+  ai_bot_network:
+    driver: bridge

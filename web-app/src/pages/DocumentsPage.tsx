@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Box,
   Typography,
@@ -24,7 +24,14 @@ import {
   Delete,
   Visibility,
   CheckCircle,
+  Search,
+  FilterList,
+  MoreVert,
+  Download,
+  Info,
+  Close,
 } from '@mui/icons-material'
+import { useDropzone } from 'react-dropzone'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState } from '@/store'
 import {
@@ -40,8 +47,7 @@ import {
 } from '@/store/slices/documentsSlice'
 import { showSnackbar } from '@/store/slices/uiSlice'
 import { documentsApi } from '@/api/services'
-import FileUpload from '@/components/upload/FileUpload'
-import { useToast } from '@/components/feedback/Toast'
+import { gradients } from '@/theme'
 
 export default function DocumentsPage() {
   const dispatch = useDispatch()
@@ -58,6 +64,8 @@ export default function DocumentsPage() {
     documentId: null,
     documentName: '',
   })
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [selectedDoc, setSelectedDoc] = useState<number | null>(null)
 
   // Load documents on mount
   useEffect(() => {
@@ -70,10 +78,9 @@ export default function DocumentsPage() {
       const response = await documentsApi.list()
       dispatch(fetchDocumentsSuccess(response.documents))
 
-      // Set active document if exists
       if (response.active_document_id) {
         const activeDoc = response.documents.find(
-          (doc) => doc.id === response.active_document_id
+          (doc: any) => doc.id === response.active_document_id
         )
         if (activeDoc) {
           dispatch(setActiveDocument(activeDoc))
@@ -84,30 +91,62 @@ export default function DocumentsPage() {
     }
   }
 
-  const handleUpload = async (files: File[]) => {
-    for (const file of files) {
-      try {
-        dispatch(uploadStart())
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0]
+
+      // Validate file size (50MB max)
+      const maxSize = 50 * 1024 * 1024
+      if (file.size > maxSize) {
+        dispatch(
+          showSnackbar({
+            message: 'File size exceeds 50MB limit',
+            severity: 'error',
+          })
+        )
+        return
+      }
+
+      setSelectedFile(file)
+    }
+  }
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) return
+
+    try {
+      dispatch(uploadStart())
+
+      for (const file of selectedFiles) {
         const document = await documentsApi.upload(file, (progress) => {
           dispatch(setUploadProgress(progress))
         })
-
         dispatch(uploadSuccess(document))
-        toast.success(`${file.name} uploaded successfully!`)
-
-        // Reload documents to get updated list
-        loadDocuments()
-      } catch (error: any) {
-        dispatch(uploadFailure(error.message))
-        toast.error(`Upload failed: ${error.message}`)
       }
+
+      dispatch(
+        showSnackbar({
+          message: `${selectedFiles.length} document(s) uploaded successfully!`,
+          severity: 'success',
+        })
+      )
+      setSelectedFiles([])
+      loadDocuments()
+    } catch (error: any) {
+      dispatch(uploadFailure(error.message))
+      dispatch(
+        showSnackbar({
+          message: `Upload failed: ${error.message}`,
+          severity: 'error',
+        })
+      )
     }
   }
 
   const handleActivate = async (documentId: number) => {
     try {
       await documentsApi.activate(documentId)
-      const doc = documents.find((d) => d.id === documentId)
+      const doc = documents.find((d: any) => d.id === documentId)
       if (doc) {
         dispatch(setActiveDocument(doc))
         dispatch(
@@ -117,6 +156,7 @@ export default function DocumentsPage() {
           })
         )
       }
+      handleMenuClose()
     } catch (error: any) {
       dispatch(
         showSnackbar({
@@ -158,18 +198,41 @@ export default function DocumentsPage() {
     }
   }
 
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, docId: number) => {
+    setAnchorEl(event.currentTarget)
+    setSelectedDoc(docId)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+    setSelectedDoc(null)
+  }
+
   const getDocumentIcon = (type: string) => {
     switch (type) {
       case 'pdf':
-        return <PictureAsPdf />
+        return <PictureAsPdf fontSize="large" />
       case 'excel':
-        return <TableChart />
+        return <TableChart fontSize="large" />
       case 'word':
-        return <Article />
+        return <Article fontSize="large" />
       case 'url':
-        return <LinkIcon />
+        return <LinkIcon fontSize="large" />
       default:
-        return <Description />
+        return <Description fontSize="large" />
+    }
+  }
+
+  const getDocumentColor = (type: string) => {
+    switch (type) {
+      case 'pdf':
+        return gradients.error
+      case 'excel':
+        return gradients.success
+      case 'word':
+        return gradients.info
+      default:
+        return gradients.primary
     }
   }
 
@@ -179,58 +242,281 @@ export default function DocumentsPage() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+
+  // Filter and search documents
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc: any) => {
+      const matchesSearch = doc.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesFilter = filterType === 'all' || doc.document_type === filterType
+      return matchesSearch && matchesFilter
+    })
+  }, [documents, searchQuery, filterType])
+
+  const documentTypes = useMemo(() => {
+    const types = new Set(documents.map((doc: any) => doc.document_type))
+    return Array.from(types)
+  }, [documents])
+
   return (
     <Box>
-      <Fade in={true} timeout={600}>
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            📂 Documents
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Upload and manage your business documents for AI analysis
-          </Typography>
-        </Box>
-      </Fade>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight={700} gutterBottom>
+          Documents
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Upload and manage your business documents for AI analysis
+        </Typography>
+      </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => dispatch(fetchDocumentsFailure(''))}>
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          onClose={() => dispatch(fetchDocumentsFailure(''))}
+        >
           {error}
         </Alert>
       )}
 
-      <Fade in={true} timeout={800}>
-        <Box sx={{ mb: 4 }}>
-          <FileUpload
-            onUpload={handleUpload}
-            accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.mp3,.wav,.txt"
-            maxSize={50}
-            multiple={true}
-          />
-        </Box>
-      </Fade>
+      {/* Upload Area */}
+      <Card
+        sx={{
+          mb: 4,
+          background: gradients.primary,
+          color: '#fff',
+        }}
+      >
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h6" fontWeight={600} gutterBottom sx={{ color: '#fff' }}>
+            Upload Documents
+          </Typography>
 
-      <Fade in={true} timeout={1000}>
-        <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 4 }}>
-          Your Documents ({documents.length})
-        </Typography>
-      </Fade>
+          <Box
+            {...getRootProps()}
+            sx={{
+              border: '3px dashed',
+              borderColor: alpha('#fff', 0.5),
+              borderRadius: 3,
+              p: 6,
+              textAlign: 'center',
+              mt: 2,
+              bgcolor: alpha('#fff', isDragActive ? 0.2 : 0.1),
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                bgcolor: alpha('#fff', 0.15),
+                borderColor: alpha('#fff', 0.8),
+              },
+            }}
+          >
+            <input {...getInputProps()} />
+            <CloudUpload sx={{ fontSize: 80, color: '#fff', mb: 2, opacity: 0.9 }} />
+            <Typography variant="h6" gutterBottom sx={{ color: '#fff' }}>
+              {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
+            </Typography>
+            <Typography variant="body2" sx={{ color: alpha('#fff', 0.8), mb: 2 }}>
+              or click to browse files
+            </Typography>
+            <Chip
+              label="PDF • Excel • Word • Audio • Text"
+              sx={{
+                bgcolor: alpha('#fff', 0.2),
+                color: '#fff',
+                fontWeight: 500,
+              }}
+            />
+            <Typography variant="caption" display="block" sx={{ color: alpha('#fff', 0.7), mt: 1 }}>
+              Maximum file size: 50MB
+            </Typography>
+          </Box>
 
-      <Grid container spacing={3}>
-        {documents.length === 0 ? (
-          <Grid item xs={12}>
-            <Fade in={true} timeout={1200}>
-              <Card>
-                <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                  <Description sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary">
-                    No documents uploaded yet. Upload your first document to get started!
-                  </Typography>
-                </CardContent>
-              </Card>
+          {fileRejections.length > 0 && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Some files were rejected. Please check file types and sizes.
+            </Alert>
+          )}
+
+          {selectedFiles.length > 0 && (
+            <Fade in>
+              <Box sx={{ mt: 3 }}>
+                <Stack spacing={1}>
+                  {selectedFiles.map((file, index) => (
+                    <Paper
+                      key={index}
+                      sx={{
+                        p: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        bgcolor: alpha('#fff', 0.9),
+                      }}
+                    >
+                      <Description sx={{ mr: 2, color: 'primary.main' }} />
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {file.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatFileSize(file.size)}
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== index))}
+                      >
+                        <Close />
+                      </IconButton>
+                    </Paper>
+                  ))}
+                </Stack>
+
+                <Stack direction="row" spacing={2} mt={2}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleUpload}
+                    disabled={isUploading}
+                    sx={{
+                      bgcolor: '#fff',
+                      color: 'primary.main',
+                      '&:hover': {
+                        bgcolor: alpha('#fff', 0.9),
+                      },
+                    }}
+                  >
+                    Upload {selectedFiles.length} File(s)
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    onClick={() => setSelectedFiles([])}
+                    disabled={isUploading}
+                    sx={{
+                      borderColor: '#fff',
+                      color: '#fff',
+                      '&:hover': {
+                        borderColor: '#fff',
+                        bgcolor: alpha('#fff', 0.1),
+                      },
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </Stack>
+              </Box>
             </Fade>
+          )}
+
+          {isUploading && (
+            <Box sx={{ mt: 3 }}>
+              <LinearProgress
+                variant="determinate"
+                value={uploadProgress}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor: alpha('#fff', 0.2),
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: '#fff',
+                  },
+                }}
+              />
+              <Typography variant="body2" sx={{ mt: 1, color: '#fff', textAlign: 'center' }}>
+                Uploading... {uploadProgress}%
+              </Typography>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Search and Filter */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
+        <TextField
+          fullWidth
+          placeholder="Search documents..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <TextField
+          select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          sx={{ minWidth: 200 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <FilterList />
+              </InputAdornment>
+            ),
+          }}
+        >
+          <MenuItem value="all">All Types</MenuItem>
+          {documentTypes.map((type) => (
+            <MenuItem key={type} value={type}>
+              {type.toUpperCase()}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
+
+      {/* Documents Header */}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h6" fontWeight={600}>
+          Your Documents ({filteredDocuments.length})
+        </Typography>
+        {activeDocument && (
+          <Chip
+            icon={<CheckCircle />}
+            label={`Active: ${activeDocument.file_name}`}
+            color="success"
+            variant="outlined"
+          />
+        )}
+      </Stack>
+
+      {/* Documents Grid */}
+      <Grid container spacing={3}>
+        {filteredDocuments.length === 0 ? (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 8 }}>
+                <Description sx={{ fontSize: 80, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                <Typography variant="h6" gutterBottom>
+                  {searchQuery || filterType !== 'all' ? 'No documents found' : 'No documents uploaded yet'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {searchQuery || filterType !== 'all'
+                    ? 'Try adjusting your search or filter'
+                    : 'Upload your first document to get started with AI analysis'}
+                </Typography>
+              </CardContent>
+            </Card>
           </Grid>
         ) : (
-          documents.map((doc, index) => (
+          filteredDocuments.map((doc: any) => (
             <Grid item xs={12} sm={6} md={4} key={doc.id}>
               <Fade in={true} timeout={1200 + index * 100}>
                 <Card
