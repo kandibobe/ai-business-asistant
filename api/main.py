@@ -56,12 +56,47 @@ app.add_middleware(
 # Security headers middleware
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    """Add security headers to all responses."""
+    """Add comprehensive security headers to all responses."""
     response = await call_next(request)
+
+    # Prevent MIME type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
+
+    # Prevent clickjacking attacks
     response.headers["X-Frame-Options"] = "DENY"
+
+    # Enable XSS protection (legacy browsers)
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+    # Force HTTPS (only if in production)
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    if is_production:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+
+    # Content Security Policy - strict policy for API
+    csp_directives = [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",  # Allow inline styles for Swagger UI
+        "img-src 'self' data: https:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "upgrade-insecure-requests" if is_production else ""
+    ]
+    response.headers["Content-Security-Policy"] = "; ".join(filter(None, csp_directives))
+
+    # Referrer Policy
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Permissions Policy (formerly Feature Policy)
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
+
+    # Remove server information
+    response.headers.pop("Server", None)
+
     return response
 
 

@@ -1,53 +1,121 @@
-# Environment
+# ==============================================================================
+# Environment & Secrets
+# ==============================================================================
 .env
 .env.local
+.env.production
+.env.*.local
+*.pem
+*.key
+*.crt
+ssl/
+
+# ==============================================================================
+# Python
+# ==============================================================================
 venv/
 .venv/
-
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+*.egg-info/
+.eggs/
+dist/
+build/
 
-# Testing
+# ==============================================================================
+# Testing & Coverage
+# ==============================================================================
 .pytest_cache/
+.tox/
 htmlcov/
 .coverage
 coverage.xml
 *.cover
 .hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
-# IDEs
+# ==============================================================================
+# IDEs & Editors
+# ==============================================================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.sublime-*
+.vs/
 
-# OS
+# ==============================================================================
+# Operating System
+# ==============================================================================
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Project specific
+# ==============================================================================
+# Project Specific
+# ==============================================================================
+# Downloads and uploads
 downloads/
-*.log
-.venv_windows_backup/
+uploads/
 
-# Docker volumes and data
+# Logs
+logs/
+*.log
+*.log.*
+
+# Backups
+backups/*.sql
+backups/*.sql.gz
+!backups/.gitkeep
+
+# Data directories (Docker volumes)
 postgres_data/
 redis_data/
-logs/
+prometheus_data/
+grafana_data/
 
 # Temporary files
 *.tmp
 *.bak
 *~
+.venv_windows_backup/
 
-# Node (web-app)
+# ==============================================================================
+# Node.js & Frontend (web-app)
+# ==============================================================================
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 dist/
 .next/
 out/
 build/
+.cache/
+
+# ==============================================================================
+# Monitoring & Metrics
+# ==============================================================================
+*.prom
+*.metrics
+
+# ==============================================================================
+# Documentation builds
+# ==============================================================================
+docs/_build/
+docs/.doctrees/
+site/
+
+# ==============================================================================
+# Nginx
+# ==============================================================================
+nginx/logs/*.log
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt

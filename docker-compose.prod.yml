@@ -1,0 +1,284 @@
+# ==============================================================================
+# Production Docker Compose Configuration
+# ==============================================================================
+# This configuration is optimized for production deployment with:
+# - Nginx reverse proxy with rate limiting and SSL
+# - Enhanced security settings
+# - Monitoring with Prometheus and Grafana
+# - Automated database backups
+# ==============================================================================
+
+services:
+  # --- Nginx Reverse Proxy ---
+  nginx:
+    image: nginx:alpine
+    container_name: ai_bot_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - api
+    networks:
+      - ai_bot_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # --- PostgreSQL Database ---
+  db:
+    image: postgres:16-alpine
+    container_name: ai_bot_postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_MAX_CONNECTIONS: 200
+      POSTGRES_SHARED_BUFFERS: 512MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 2GB
+      POSTGRES_WORK_MEM: 16MB
+    ports:
+      - "127.0.0.1:5432:5432"  # Only bind to localhost for security
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+      - ./scripts/postgres-backup.sh:/docker-entrypoint-initdb.d/backup.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai_bot_network
+
+  # --- Redis Cache ---
+  redis:
+    image: redis:7-alpine
+    container_name: ai_bot_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"  # Only bind to localhost
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ai_bot_network
+
+  # --- FastAPI REST API ---
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    container_name: ai_bot_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    expose:
+      - "8000"  # Only expose internally, not to host
+    volumes:
+      - ./downloads:/app/downloads:ro
+      - ./logs:/app/logs
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ENVIRONMENT: production
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ai_bot_network
+
+  # --- Telegram Bot ---
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: bot
+    container_name: ai_bot_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    volumes:
+      - ./downloads:/app/downloads
+      - ./logs:/app/logs
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ENVIRONMENT: production
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai_bot_network
+
+  # --- Celery Worker ---
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ai_bot_worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env.production
+    volumes:
+      - ./downloads:/app/downloads
+      - ./logs:/app/logs
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      ENVIRONMENT: production
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A celery_app inspect ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai_bot_network
+
+  # --- Prometheus Monitoring ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai_bot_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ai_bot_network
+
+  # --- Grafana Dashboard ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai_bot_grafana
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      - prometheus
+    networks:
+      - ai_bot_network
+
+  # --- Database Backup Service ---
+  db-backup:
+    image: postgres:16-alpine
+    container_name: ai_bot_backup
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file:
+      - .env.production
+    volumes:
+      - ./backups:/backups
+      - ./scripts/postgres-backup.sh:/backup.sh:ro
+    environment:
+      DB_HOST: db
+      BACKUP_SCHEDULE: "0 2 * * *"  # Daily at 2 AM
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Installing cronie..."
+        apk add --no-cache cronie
+        echo "$${BACKUP_SCHEDULE} /backup.sh" > /etc/crontabs/root
+        echo "Starting cron daemon..."
+        crond -f -l 2
+    networks:
+      - ai_bot_network
+
+# Persistent volumes
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Custom network
+networks:
+  ai_bot_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
