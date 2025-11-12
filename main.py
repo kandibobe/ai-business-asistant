@@ -18,7 +18,7 @@ from handlers.common_enhanced import start, clear_command, button_callback, my_d
 from handlers.documents import handle_document
 from handlers.messages import handle_message
 from handlers.reply_keyboard_handler import handle_reply_keyboard
-from audio import handle_audio
+# from audio import handle_audio  # TODO: Create audio handler module or use documents handler
 from database.database import init_db, engine
 
 # Import monitoring and health check utilities
@@ -219,7 +219,8 @@ def main() -> None:
 
     # Handler for audio and voice messages
     print("   - Audio/voice handler")
-    application.add_handler(MessageHandler(filters.AUDIO | filters.VOICE, handle_audio))
+    # Use document handler for audio files (transcription happens in tasks.py)
+    application.add_handler(MessageHandler(filters.AUDIO | filters.VOICE, handle_document))
 
     # Text message handler with priorities:
     # 1. Check Reply Keyboard buttons
