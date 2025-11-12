@@ -41,15 +41,17 @@ app = FastAPI(
 )
 
 # CORS middleware
+# SECURITY FIX: Restrict allowed headers and methods
 ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Removed PATCH
+    allow_headers=["Content-Type", "Authorization", "Accept"],  # Whitelist
+    expose_headers=["Content-Type"],  # Minimal exposure
+    max_age=600  # Cache preflight requests for 10 minutes
 )
 
 

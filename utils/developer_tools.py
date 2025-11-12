@@ -206,15 +206,58 @@ def parse_cron(expression: str) -> Tuple[bool, str]:
 
 
 def calculate_expression(expr: str) -> Tuple[bool, str]:
-    """Безопасный калькулятор для математических выражений"""
-    try:
-        # Разрешаем только безопасные операции
-        allowed_chars = set('0123456789+-*/().% ')
-        if not all(c in allowed_chars for c in expr):
-            return False, "❌ Разрешены только цифры и операторы: + - * / ( ) %"
+    """
+    Безопасный калькулятор для математических выражений.
 
-        # Вычисляем
-        result = eval(expr, {"__builtins__": {}}, {})
+    SECURITY FIX: Replaces unsafe eval() with AST-based evaluation.
+    Only allows whitelisted mathematical operations to prevent code injection.
+    """
+    import ast
+    import operator
+
+    # Whitelist of allowed operations
+    ALLOWED_OPS = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.FloorDiv: operator.floordiv,
+        ast.Mod: operator.mod,
+        ast.Pow: operator.pow,
+        ast.USub: operator.neg,
+        ast.UAdd: operator.pos,
+    }
+
+    def safe_eval(node):
+        """Recursively evaluate AST node with whitelist of operations."""
+        if isinstance(node, ast.Num):  # Number (Python < 3.8)
+            return node.n
+        elif isinstance(node, ast.Constant):  # Constant (Python 3.8+)
+            if isinstance(node.value, (int, float)):
+                return node.value
+            raise ValueError("Only numeric constants allowed")
+        elif isinstance(node, ast.BinOp):  # Binary operation (+, -, *, /, etc.)
+            op_type = type(node.op)
+            if op_type not in ALLOWED_OPS:
+                raise ValueError(f"Operation {op_type.__name__} not allowed")
+            left = safe_eval(node.left)
+            right = safe_eval(node.right)
+            return ALLOWED_OPS[op_type](left, right)
+        elif isinstance(node, ast.UnaryOp):  # Unary operation (-, +)
+            op_type = type(node.op)
+            if op_type not in ALLOWED_OPS:
+                raise ValueError(f"Operation {op_type.__name__} not allowed")
+            operand = safe_eval(node.operand)
+            return ALLOWED_OPS[op_type](operand)
+        else:
+            raise ValueError(f"Unsupported operation: {type(node).__name__}")
+
+    try:
+        # Parse expression into AST
+        tree = ast.parse(expr, mode='eval')
+
+        # Evaluate safely (no eval() vulnerability)
+        result = safe_eval(tree.body)
 
         output = f"🔢 <b>Результат:</b>\n\n"
         output += f"<code>{expr} = {result}</code>\n\n"
@@ -225,12 +268,23 @@ def calculate_expression(expr: str) -> Tuple[bool, str]:
             output += f"💯 Десятичное: {result}\n"
             if isinstance(result, float):
                 output += f"🔢 Целое: {int(result)}\n"
-            if result >= 0:
-                output += f"🔣 Hex: {hex(int(result))}\n"
-                output += f"2️⃣ Binary: {bin(int(result))}\n"
+            if result >= 0 and abs(result) < 2**63:  # Prevent overflow
+                try:
+                    output += f"🔣 Hex: {hex(int(result))}\n"
+                    output += f"2️⃣ Binary: {bin(int(result))}\n"
+                except (ValueError, OverflowError):
+                    pass  # Skip if number too large
 
         return True, output
 
+    except SyntaxError:
+        return False, "❌ Синтаксическая ошибка в выражении"
+    except ZeroDivisionError:
+        return False, "❌ Деление на ноль"
+    except ValueError as e:
+        return False, f"❌ Недопустимая операция: {str(e)}"
+    except OverflowError:
+        return False, "❌ Результат слишком большой"
     except Exception as e:
         return False, f"❌ Ошибка вычисления: {str(e)}"
 

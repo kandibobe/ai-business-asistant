@@ -13,10 +13,18 @@ from database.models import User
 from database import crud
 
 # JWT settings
-SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+# SECURITY FIX: Require JWT secret key, no default fallback
+SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+if not SECRET_KEY or SECRET_KEY == 'your-secret-key-change-in-production':
+    raise ValueError(
+        "JWT_SECRET_KEY must be set in environment variables! "
+        "Generate a secure key: openssl rand -hex 32"
+    )
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
-REFRESH_TOKEN_EXPIRE_DAYS = 30
+# SECURITY: Reduced token lifetime from 24h to 15min for better security
+ACCESS_TOKEN_EXPIRE_MINUTES = 15  # 15 minutes (previously 24 hours)
+REFRESH_TOKEN_EXPIRE_DAYS = 7  # 7 days (previously 30 days)
 
 security = HTTPBearer()
 

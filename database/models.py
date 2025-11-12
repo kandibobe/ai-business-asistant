@@ -34,7 +34,7 @@ class User(Base):
     role = Column(String, default='free', nullable=False, index=True)  # User role: guest, free, premium, business, admin, etc.
 
     # ID документа, который пользователь выбрал как активный
-    active_document_id = Column(Integer, ForeignKey('documents.id'), nullable=True)
+    active_document_id = Column(Integer, ForeignKey('documents.id'), nullable=True, index=True)  # PERFORMANCE: FK indexed
 
     # Связь "один ко многим": один пользователь может иметь много документов
     # Явно указываем foreign_keys чтобы избежать неоднозначности
@@ -68,7 +68,7 @@ class Document(Base):
     content = Column('extracted_text', Text, nullable=True)  # Alias для обратной совместимости
 
     # Метаданные документа
-    document_type = Column(String, nullable=True)      # Тип: pdf, excel, word, audio, url
+    document_type = Column(String, nullable=True, index=True)  # PERFORMANCE: Indexed for filtering
     source_url = Column(String, nullable=True)         # URL источника (для web страниц)
     file_size = Column(Integer, nullable=True)         # Размер файла в байтах
 
@@ -82,11 +82,11 @@ class Document(Base):
     keywords = Column(Text, nullable=True)             # Ключевые слова (JSON строка)
 
     # Временные метки
-    uploaded_at = Column(DateTime(timezone=True), server_default=now())
+    uploaded_at = Column(DateTime(timezone=True), server_default=now(), index=True)  # PERFORMANCE: Indexed for sorting
     processed_at = Column('processed_at', DateTime(timezone=True), nullable=True)  # Явный alias для существующей колонки
 
     # Связи
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)  # PERFORMANCE: FK should be indexed
     owner = relationship("User", back_populates="documents", foreign_keys=[user_id])
 
     # Свойства для обратной совместимости
