@@ -31,17 +31,37 @@ else:
     db_pass_encoded = quote_plus(DB_PASS)
     DATABASE_URL = f"postgresql://{db_user_encoded}:{db_pass_encoded}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-    # echo=False, чтобы не выводить все SQL-запросы в консоль
-    # Added connection timeout and pool settings for better reliability
+    # Enhanced connection pooling for production
+    # See: https://docs.sqlalchemy.org/en/20/core/pooling.html
+
+    # Determine environment
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+
+    # Production settings: higher pool size for better concurrency
+    # Development settings: smaller pool to reduce resource usage
+    pool_size = 20 if is_production else 5
+    max_overflow = 40 if is_production else 10
+    pool_timeout = 30 if is_production else 10
+
     engine = create_engine(
         DATABASE_URL,
-        echo=False,
-        pool_pre_ping=True,  # Verify connections before using
-        pool_size=5,         # Connection pool size
-        max_overflow=10,     # Max overflow connections
+        echo=False,  # Disable SQL query logging for performance
+
+        # Connection Pool Settings
+        pool_size=pool_size,              # Number of persistent connections
+        max_overflow=max_overflow,        # Max additional connections when pool is full
+        pool_timeout=pool_timeout,        # Seconds to wait for available connection
+        pool_recycle=3600,                # Recycle connections after 1 hour (prevents stale connections)
+        pool_pre_ping=True,               # Verify connection health before using
+
+        # Connection Settings
         connect_args={
-            "connect_timeout": 10,  # 10 second connection timeout
-            "options": "-c statement_timeout=30000"  # 30 second query timeout
+            "connect_timeout": 10,                        # Connection timeout: 10 seconds
+            "options": "-c statement_timeout=30000",      # Query timeout: 30 seconds
+            "keepalives": 1,                              # Enable TCP keepalive
+            "keepalives_idle": 30,                        # Seconds before sending keepalive probes
+            "keepalives_interval": 10,                    # Interval between keepalive probes
+            "keepalives_count": 5,                        # Max keepalive probes before closing
         }
     )
 
