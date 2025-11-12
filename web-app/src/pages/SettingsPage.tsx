@@ -14,6 +14,8 @@ import {
   FormControlLabel,
   Alert,
   Snackbar,
+  Fade,
+  Zoom,
 } from '@mui/material'
 import { Save } from '@mui/icons-material'
 import { useSelector, useDispatch } from 'react-redux'
@@ -116,59 +118,86 @@ export default function SettingsPage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Settings
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Customize your AI assistant preferences
-        </Typography>
-      </Box>
+      <Fade in={true} timeout={600}>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" fontWeight={700} gutterBottom>
+            ⚙️ Settings
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Customize your AI assistant preferences
+          </Typography>
+        </Box>
+      </Fade>
 
       {settings.error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => dispatch(saveSettingsFailure(''))}>
-          {settings.error}
-        </Alert>
+        <Fade in={true} timeout={400}>
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => dispatch(saveSettingsFailure(''))}>
+            {settings.error}
+          </Alert>
+        </Fade>
       )}
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Profile Information
-          </Typography>
-          <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Username"
-              value={user?.username || ''}
-              disabled
-              fullWidth
-            />
-            <TextField
-              label="First Name"
-              value={user?.first_name || ''}
-              disabled
-              fullWidth
-            />
-            <TextField
-              label="User ID"
-              value={user?.user_id || ''}
-              disabled
-              fullWidth
-            />
-            {user?.is_premium && (
-              <Alert severity="success">
-                Premium Member 👑
-              </Alert>
-            )}
-          </Box>
-        </CardContent>
-      </Card>
+      <Zoom in={true} timeout={800}>
+        <Card
+          sx={{
+            mb: 3,
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: 6,
+            },
+          }}
+        >
+          <CardContent>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              👤 Profile Information
+            </Typography>
+            <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Username"
+                value={user?.username || ''}
+                disabled
+                fullWidth
+              />
+              <TextField
+                label="First Name"
+                value={user?.first_name || ''}
+                disabled
+                fullWidth
+              />
+              <TextField
+                label="User ID"
+                value={user?.user_id || ''}
+                disabled
+                fullWidth
+              />
+              {user?.is_premium && (
+                <Fade in={true} timeout={1000}>
+                  <Alert severity="success" sx={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', color: 'white' }}>
+                    <strong>👑 Premium Member</strong>
+                  </Alert>
+                </Fade>
+              )}
+            </Box>
+          </CardContent>
+        </Card>
+      </Zoom>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            AI Assistant Settings
-          </Typography>
+      <Zoom in={true} timeout={1000}>
+        <Card
+          sx={{
+            mb: 3,
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: 6,
+            },
+          }}
+        >
+          <CardContent>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              🤖 AI Assistant Settings
+            </Typography>
           <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
             <FormControl fullWidth>
               <InputLabel>Language</InputLabel>
@@ -231,55 +260,82 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            Notifications
-          </Typography>
-          <Box sx={{ mt: 2 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={localSettings.notifications_enabled}
-                  onChange={(e) =>
-                    handleChange('notifications_enabled', e.target.checked)
-                  }
-                />
-              }
-              label="Enable notifications for document processing and AI responses"
-            />
-          </Box>
-        </CardContent>
-      </Card>
-
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-        <Button
-          variant="outlined"
-          size="large"
-          onClick={() => {
-            setLocalSettings({
-              language: settings.language,
-              ai_role: settings.ai_role,
-              response_style: settings.response_style,
-              ai_mode: settings.ai_mode,
-              notifications_enabled: settings.notifications_enabled,
-            })
-            setHasChanges(false)
+      <Zoom in={true} timeout={1200}>
+        <Card
+          sx={{
+            mb: 3,
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: 6,
+            },
           }}
-          disabled={!hasChanges || settings.isSaving}
         >
-          Reset
-        </Button>
-        <Button
-          variant="contained"
-          size="large"
-          startIcon={<Save />}
-          onClick={handleSave}
-          disabled={!hasChanges || settings.isSaving}
-        >
-          {settings.isSaving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </Box>
+          <CardContent>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              🔔 Notifications
+            </Typography>
+            <Box sx={{ mt: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={localSettings.notifications_enabled}
+                    onChange={(e) =>
+                      handleChange('notifications_enabled', e.target.checked)
+                    }
+                  />
+                }
+                label="Enable notifications for document processing and AI responses"
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      </Zoom>
+
+      <Fade in={true} timeout={1400}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => {
+              setLocalSettings({
+                language: settings.language,
+                ai_role: settings.ai_role,
+                response_style: settings.response_style,
+                ai_mode: settings.ai_mode,
+                notifications_enabled: settings.notifications_enabled,
+              })
+              setHasChanges(false)
+            }}
+            disabled={!hasChanges || settings.isSaving}
+            sx={{
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                transform: 'scale(1.05)',
+              },
+            }}
+          >
+            Reset
+          </Button>
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<Save />}
+            onClick={handleSave}
+            disabled={!hasChanges || settings.isSaving}
+            sx={{
+              background: hasChanges ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : undefined,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'scale(1.05)',
+                boxShadow: 4,
+              },
+            }}
+          >
+            {settings.isSaving ? 'Saving...' : '💾 Save Changes'}
+          </Button>
+        </Box>
+      </Fade>
 
       {/* Notification Snackbar */}
       <Snackbar
